@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { startOfDay, endOfDay } from "date-fns";
-import { calcLateMinutes } from "@/lib/utils";
+import { formatTime } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -65,15 +65,9 @@ export async function GET(req: NextRequest) {
     ]);
 
     const formattedRecords = records.map((r) => {
-      let lateMinutes = r.lateMinutes || 0;
-      if (lateMinutes === 0 && r.checkInTime) {
-        const scheduleStart = (r.shift as any)?.startTime || "08:00";
-        const toleranceMin = (r.shift as any)?.toleranceMin || 15;
-        lateMinutes = calcLateMinutes(new Date(r.checkInTime), scheduleStart, toleranceMin);
-      }
       return {
         ...r,
-        lateMinutes,
+        lateMinutes: r.lateMinutes || 0,
       };
     });
 

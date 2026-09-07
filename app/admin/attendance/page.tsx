@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   AlertCircle,
   MessageSquare,
+  FileCheck,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { id } from "date-fns/locale";
@@ -60,24 +61,7 @@ const STATUS = {
 } as const;
 
 function getEffectiveLate(rec: AttendanceRecord): number {
-  if (typeof rec.lateMinutes === "number" && rec.lateMinutes > 0) {
-    return rec.lateMinutes;
-  }
-  if (!rec.checkInTime) return 0;
-  const d = new Date(rec.checkInTime);
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Jakarta",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  const parts = formatter.formatToParts(d);
-  const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
-  const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
-  const checkInMin = h * 60 + m;
-  const startMin = 8 * 60;
-  const tolerance = 15;
-  return Math.max(0, checkInMin - (startMin + tolerance));
+  return typeof rec.lateMinutes === "number" ? rec.lateMinutes : 0;
 }
 
 export default function AttendanceAdminPage() {
@@ -89,6 +73,7 @@ export default function AttendanceAdminPage() {
   const [validating, setValidating] = useState<string | null>(null);
   const [noteModal, setNoteModal] = useState<{ id: string; action: string; employeeName: string; currentNotes?: string } | null>(null);
   const [adminNote, setAdminNote] = useState("");
+  const [reportModal, setReportModal] = useState<AttendanceRecord | null>(null);
 
   // Dynamic Options from DB
   const [departments, setDepartments] = useState<string[]>([]);
@@ -435,13 +420,12 @@ export default function AttendanceAdminPage() {
                 <th className="px-5 py-3.5 text-left font-semibold">Jarak / Keterlambatan</th>
                 <th className="px-5 py-3.5 text-left font-semibold">Foto Bukti</th>
                 <th className="px-5 py-3.5 text-left font-semibold">Status</th>
-                <th className="px-5 py-3.5 text-left font-semibold min-w-[200px]">Aksi Validasi Admin</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <Loader2 className="animate-spin mx-auto text-blue-500 mb-2" size={32} />
                     <p className="text-xs text-gray-400">Memuat data absensi...</p>
                   </td>
@@ -595,6 +579,15 @@ export default function AttendanceAdminPage() {
                           {!rec.checkInPhoto && !rec.workplacePhoto && !rec.checkOutPhoto && (
                             <span className="text-gray-300 text-xs font-mono">-</span>
                           )}
+                          {(rec.handover || (rec.periodicReports && rec.periodicReports.length > 0)) && (
+                            <button
+                              onClick={() => setReportModal(rec)}
+                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold flex items-center gap-1 border border-amber-200 transition-colors shadow-2xs mt-1"
+                              title="Lihat Laporan Serah Terima & Patroli"
+                            >
+                              <FileCheck size={12} /> Laporan
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -634,130 +627,7 @@ export default function AttendanceAdminPage() {
                         )}
                       </td>
 
-                      {/* Aksi Validasi Admin (Absen Benar atau Ditolak) */}
-                      <td className="px-5 py-4">
-                        {isRecordValidating ? (
-                          <div className="flex items-center gap-1.5 text-xs text-blue-600">
-                            <Loader2 size={14} className="animate-spin" />
-                            <span>Menyimpan...</span>
-                          </div>
-                        ) : rec.status === "VALID" ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              disabled
-                              className={`px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 font-bold shadow-2xs cursor-not-allowed opacity-90 select-none ${
-                                effectiveLate > 0
-                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
-                                  : "bg-green-100 text-green-800 border border-green-300"
-                              }`}
-                              title="Absensi telah disetujui"
-                            >
-                              <CheckCircle size={14} className={`shrink-0 ${effectiveLate > 0 ? "text-amber-700" : "text-green-700"}`} />
-                              <span>
-                                {effectiveLate > 0
-                                  ? `Disetujui (Telat ${effectiveLate} mnt)`
-                                  : rec.adminNotes?.trim()
-                                  ? "Disetujui (dengan catatan)"
-                                  : "Disetujui"}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenNoteModal(rec.id, "REJECT", rec.employee.name, rec.adminNotes || "")
-                              }
-                              className="px-2 py-1.5 rounded-lg text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-colors flex items-center gap-1 cursor-pointer"
-                              title="Ubah keputusan validasi (Mode Presentasi)"
-                            >
-                              <Edit3 size={12} />
-                              <span>Ubah</span>
-                            </button>
-                          </div>
-                        ) : rec.status === "REJECTED" ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              disabled
-                              className="px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-300 font-bold shadow-2xs cursor-not-allowed opacity-90 select-none"
-                              title="Absensi telah ditolak"
-                            >
-                              <XCircle size={14} className="shrink-0 text-red-600" />
-                              <span className="text-red-600 font-bold">
-                                {rec.adminNotes?.trim()
-                                  ? "Ditolak (dengan catatan)"
-                                  : "Ditolak"}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenNoteModal(rec.id, "APPROVE", rec.employee.name, rec.adminNotes || "")
-                              }
-                              className="px-2 py-1.5 rounded-lg text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 border border-gray-200 hover:border-green-200 transition-colors flex items-center gap-1"
-                              title="Ubah keputusan validasi (Mode Presentasi)"
-                            >
-                              <Edit3 size={12} />
-                              <span>Ubah</span>
-                            </button>
-                          </div>
-                        ) : rec.status === "CORRECTED" ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <button
-                              type="button"
-                              disabled
-                              className="px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 bg-blue-100 text-blue-800 border border-blue-300 font-bold shadow-2xs cursor-not-allowed opacity-90 select-none"
-                              title="Absensi telah dikoreksi"
-                            >
-                              <ShieldCheck size={14} className="shrink-0 text-blue-700" />
-                              <span>
-                                {rec.adminNotes?.trim()
-                                  ? "Dikoreksi (dengan catatan)"
-                                  : "Dikoreksi"}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenNoteModal(rec.id, "APPROVE", rec.employee.name, rec.adminNotes || "")
-                              }
-                              className="px-2 py-1.5 rounded-lg text-xs text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 transition-colors flex items-center gap-1"
-                              title="Ubah keputusan validasi (Mode Presentasi)"
-                            >
-                              <Edit3 size={12} />
-                              <span>Ubah</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {/* Tombol Benar / Setujui */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenNoteModal(rec.id, "APPROVE", rec.employee.name, rec.adminNotes || "")
-                              }
-                              className="px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold shadow-xs transition-all cursor-pointer"
-                              title="Validasi bahwa absensi ini Benar / Disetujui"
-                            >
-                              <CheckCircle size={14} className="shrink-0" />
-                              <span>Setujui</span>
-                            </button>
 
-                            {/* Tombol Tolak */}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleOpenNoteModal(rec.id, "REJECT", rec.employee.name, rec.adminNotes || "")
-                              }
-                              className="px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 border border-red-200 font-semibold transition-all cursor-pointer"
-                              title="Tolak absensi ini"
-                            >
-                              <XCircle size={14} className="shrink-0" />
-                              <span className="text-red-600 font-semibold">Tolak</span>
-                            </button>
-                          </div>
-                        )}
-                      </td>
                     </tr>
                   );
                 })
@@ -800,7 +670,7 @@ export default function AttendanceAdminPage() {
       {/* Photo Lightbox */}
       {lightboxInfo && (
         <div
-          className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
+          className="fixed inset-0 bg-black/85 z-[100] flex items-center justify-center p-4 backdrop-blur-xs"
           onClick={() => setLightboxInfo(null)}
         >
           <div
@@ -821,162 +691,115 @@ export default function AttendanceAdminPage() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-3 bg-black flex items-center justify-center">
+            <div className="aspect-[4/3] bg-black">
               <img
                 src={lightboxInfo.url}
-                alt="Foto absensi"
-                className="w-full max-h-[75vh] object-contain rounded-xl"
+                alt="Enlarged view"
+                className="w-full h-full object-contain"
               />
-            </div>
-            <div className="px-5 py-2.5 bg-gray-800 text-center text-xs text-gray-400">
-              Gunakan foto ini untuk memverifikasi keaslian kehadiran pegawai
             </div>
           </div>
         </div>
       )}
 
       {/* Validasi Catatan / Tolak Modal */}
-      {noteModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-2xs">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <div>
-                <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
-                  {noteModal.action === "APPROVE" ? (
-                    <>
-                      <CheckCircle size={18} className="text-green-600" />
-                      Validasi Absensi: Setujui (Benar)
-                    </>
-                  ) : (
-                    <>
-                      <XCircle size={18} className="text-red-500" />
-                      Validasi Absensi: Tolak
-                    </>
+      {/* REPORT MODAL (Serah Terima & Patroli) */}
+      {reportModal && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <FileCheck className="text-amber-600" size={24} />
+                Laporan Pegawai - {reportModal.employee.name}
+              </h3>
+              <button
+                onClick={() => setReportModal(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto pr-2 space-y-6 flex-1">
+              {/* Serah Terima */}
+              {reportModal.handover && (
+                <div className="space-y-3">
+                  <h4 className="font-bold text-sm text-gray-800 bg-gray-50 p-2 rounded-lg border">
+                    Serah Terima Tugas (Handover)
+                  </h4>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                    {(reportModal.handover as any).handoverNotes}
+                  </div>
+                  {reportModal.handover.photos && reportModal.handover.photos.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {reportModal.handover.photos.map((p, i) => (
+                        <div key={i} className="relative rounded-lg overflow-hidden aspect-[4/3] border shadow-sm cursor-pointer hover:opacity-90"
+                             onClick={() => setLightboxInfo({ url: p.photoUrl, title: "Foto Serah Terima" })}>
+                          <img src={p.photoUrl} alt="Handover" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Pegawai: <strong className="text-gray-700">{noteModal.employeeName}</strong></p>
-              </div>
-              <button
-                onClick={() => {
-                  setNoteModal(null);
-                  setAdminNote("");
-                }}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Quick Reason Presets for Reject */}
-            {noteModal.action === "REJECT" && (
-              <div className="mb-3.5 space-y-1.5">
-                <label className="block text-xs font-semibold text-gray-700">Pilih Alasan Penolakan Cepat (Opsional):</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    "Foto lokasi tidak sesuai tempat kerja",
-                    "Foto muka tidak jelas / bukan pegawai",
-                    "Terdeteksi lokasi palsu / Fake GPS",
-                    "Tidak ada konfirmasi kehadiran fisik",
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setAdminNote(preset)}
-                      className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-medium transition-colors border border-red-100 text-left cursor-pointer"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Quick Presets for Approve */}
-            {noteModal.action === "APPROVE" && (
-              <div className="mb-3.5 space-y-1.5">
-                <label className="block text-xs font-semibold text-gray-700">Pilih Catatan Persetujuan Cepat (Opsional):</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    "Absensi sah & diverifikasi",
-                    "Lokasi dan foto valid",
-                    "Tugas luar kota telah disetujui",
-                    "Shift lembur dikonfirmasi",
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setAdminNote(preset)}
-                      className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-[11px] font-medium transition-colors border border-green-100 text-left cursor-pointer"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
+              {/* Patroli */}
+              {reportModal.periodicReports && reportModal.periodicReports.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-bold text-sm text-gray-800 bg-gray-50 p-2 rounded-lg border flex justify-between">
+                    <span>Laporan Patroli Berkala</span>
+                    <span className="text-xs font-normal bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                      {reportModal.periodicReports.length} Checkpoint
+                    </span>
+                  </h4>
+                  <div className="space-y-4">
+                    {reportModal.periodicReports.map((report, idx) => (
+                      <div key={report.id} className="border border-gray-200 rounded-xl p-4 space-y-3 relative overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-1 h-full ${report.status === 'SUBMITTED' ? 'bg-green-500' : report.status === 'LATE' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-sm">Checkpoint Ke-{report.checkpointSequence}</div>
+                            <div className="text-xs text-gray-500">
+                              Jadwal: {format(new Date(report.scheduledAt), "HH:mm")} WIB
+                              {report.submittedAt && ` • Dilaporkan: ${format(new Date(report.submittedAt), "HH:mm")} WIB`}
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase ${
+                            report.status === 'SUBMITTED' ? 'bg-green-100 text-green-700' :
+                            report.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {report.status}
+                          </span>
+                        </div>
+                        {report.reportNotes && (
+                          <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded border">
+                            {report.reportNotes}
+                          </div>
+                        )}
+                        {report.photos && report.photos.length > 0 ? (
+                          <div className="flex gap-2 overflow-x-auto pb-1">
+                            {report.photos.map((p, i) => (
+                              <div key={i} className="flex-shrink-0 w-24 h-24 relative rounded-lg overflow-hidden border shadow-sm cursor-pointer hover:opacity-90"
+                                   onClick={() => setLightboxInfo({ url: p.photoUrl, title: `Foto Patroli Ke-${report.checkpointSequence}` })}>
+                                <img src={p.photoUrl} alt="Patrol" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400 italic">Tidak ada foto</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            <div className="space-y-1.5 mb-5">
-              <label className="block text-xs font-semibold text-gray-700">
-                Catatan Admin <span className="text-gray-400 font-normal">(Opsional, tidak harus diisi)</span>:
-              </label>
-              <textarea
-                value={adminNote}
-                onChange={(e) => setAdminNote(e.target.value)}
-                rows={3}
-                placeholder={
-                  noteModal.action === "APPROVE"
-                    ? "Tuliskan catatan persetujuan untuk pegawai jika ada (opsional, jika kosong tetap disetujui)..."
-                    : "Tuliskan alasan penolakan absensi jika ada (opsional)..."
-                }
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-800"
-              />
-              <p className="text-[11px] text-gray-400">
-                Catatan ini akan otomatis tampil pada riwayat absensi pegawai saat mereka mengeklik detail absensinya.
-              </p>
-            </div>
-
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setNoteModal(null);
-                  setAdminNote("");
-                }}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={Boolean(validating)}
-                onClick={handleNoteSubmit}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-colors shadow-xs ${
-                  validating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
-                } ${
-                  noteModal.action === "APPROVE"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                }`}
-              >
-                {validating ? (
-                  <span className="flex items-center justify-center gap-1.5">
-                    <Loader2 size={14} className="animate-spin" />
-                    Menyimpan...
-                  </span>
-                ) : noteModal.action === "APPROVE" ? (
-                  adminNote.trim()
-                    ? "Konfirmasi Setujui (Dengan Catatan)"
-                    : "Konfirmasi Setujui"
-                ) : adminNote.trim() ? (
-                  "Konfirmasi Tolak (Dengan Catatan)"
-                ) : (
-                  "Konfirmasi Tolak"
-                )}
-              </button>
+              )}
             </div>
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

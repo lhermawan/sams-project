@@ -57,7 +57,11 @@ async function getHistory(employeeId: string, period = "month", page = 1) {
   const [records, total] = await Promise.all([
     prisma.attendance.findMany({
       where,
-      include: { shift: true },
+      include: {
+        shift: true,
+        handover: { include: { photos: true } },
+        periodicReports: { include: { photos: true }, orderBy: { checkpointSequence: "asc" } },
+      },
       orderBy: { date: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -119,6 +123,20 @@ export default async function HistoryPage({
           endTime: r.shift.endTime,
         }
       : null,
+    handover: (r as any).handover ? {
+      handoverNotes: (r as any).handover.handoverNotes,
+      status: (r as any).handover.status,
+      photos: (r as any).handover.photos.map((p: any) => ({ photoUrl: p.photoUrl })),
+    } : null,
+    periodicReports: (r as any).periodicReports ? (r as any).periodicReports.map((pr: any) => ({
+      id: pr.id,
+      checkpointSequence: pr.checkpointSequence,
+      scheduledAt: pr.scheduledAt.toISOString(),
+      submittedAt: pr.submittedAt ? pr.submittedAt.toISOString() : null,
+      status: pr.status,
+      reportNotes: pr.reportNotes,
+      photos: pr.photos.map((p: any) => ({ photoUrl: p.photoUrl })),
+    })) : [],
   }));
 
   return (

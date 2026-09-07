@@ -5,11 +5,13 @@ import { id } from "date-fns/locale";
 import { MapPin, Clock, CalendarCheck, CheckCircle, XCircle, ClipboardList } from "lucide-react";
 import NotificationBell from "@/components/shared/NotificationBell";
 
+import { ScheduleResolver } from "@/lib/engine/schedule-resolver";
+
 async function getEmployeeData(employeeId: string) {
   const today = startOfDay(new Date());
   const todayEnd = endOfDay(new Date());
 
-  const [employee, todayAttendance, schedule, settings] = await Promise.all([
+  const [employee, todayAttendance, settings] = await Promise.all([
     prisma.employee.findUnique({
       where: { id: employeeId },
       include: {
@@ -27,16 +29,14 @@ async function getEmployeeData(employeeId: string) {
         date: { gte: today, lte: todayEnd },
       },
     }),
-    prisma.workSchedule.findFirst({
-      where: { isActive: true },
-      orderBy: { effectiveFrom: "desc" },
-    }),
     prisma.systemSetting.findMany({
       where: { key: { in: ["company_logo", "company_name", "app_name"] } },
     }),
   ]);
 
-  return { employee, todayAttendance, schedule, settings };
+  const resolvedSchedule = await ScheduleResolver.resolveForEmployee(employeeId, new Date());
+
+  return { employee, todayAttendance, resolvedSchedule, settings };
 }
 
 import RecentAttendanceList from "@/components/employee/RecentAttendanceList";
@@ -44,7 +44,11 @@ import RecentAttendanceList from "@/components/employee/RecentAttendanceList";
 async function getRecentHistory(employeeId: string) {
   return prisma.attendance.findMany({
     where: { employeeId },
-    include: { shift: true },
+    include: {
+      shift: true,
+      handover: { include: { photos: true } },
+      periodicReports: { include: { photos: true }, orderBy: { checkpointSequence: "asc" } },
+    },
     orderBy: { date: "desc" },
     take: 5,
   });
@@ -55,10 +59,18 @@ export default async function EmployeeDashboardPage() {
   const employeeId = session?.user?.employeeId;
   if (!employeeId) return null;
 
-  const { employee, todayAttendance, schedule, settings } = await getEmployeeData(employeeId);
+  const { employee, todayAttendance, resolvedSchedule, settings } = await getEmployeeData(employeeId);
   const recentHistory = await getRecentHistory(employeeId);
-  const activeShift = employee?.employeeShifts?.[0]?.shift;
   const todayFormatted = format(new Date(), "EEEE, dd MMMM yyyy", { locale: id });
+  
+  let scheduleText = "08:00-17:00";
+  if (resolvedSchedule.isHoliday) {
+    scheduleText = "Libur Nasional";
+  } else if (!resolvedSchedule.isWorkDay || resolvedSchedule.isDayOff) {
+    scheduleText = "Hari Libur";
+  } else if (resolvedSchedule.startTime && resolvedSchedule.endTime) {
+    scheduleText = `${resolvedSchedule.startTime}-${resolvedSchedule.endTime}`;
+  }
 
   const settingsMap = (settings || []).reduce(
     (acc: Record<string, string>, curr: { key: string; value: string }) => {
@@ -97,6 +109,20 @@ export default async function EmployeeDashboardPage() {
           endTime: att.shift.endTime,
         }
       : null,
+    handover: (att as any).handover ? {
+      handoverNotes: (att as any).handover.handoverNotes,
+      status: (att as any).handover.status,
+      photos: (att as any).handover.photos.map((p: any) => ({ photoUrl: p.photoUrl })),
+    } : null,
+    periodicReports: (att as any).periodicReports ? (att as any).periodicReports.map((pr: any) => ({
+      id: pr.id,
+      checkpointSequence: pr.checkpointSequence,
+      scheduledAt: pr.scheduledAt.toISOString(),
+      submittedAt: pr.submittedAt ? pr.submittedAt.toISOString() : null,
+      status: pr.status,
+      reportNotes: pr.reportNotes,
+      photos: pr.photos.map((p: any) => ({ photoUrl: p.photoUrl })),
+    })) : [],
   }));
 
   return (
@@ -163,11 +189,7 @@ export default async function EmployeeDashboardPage() {
             <div className="text-center">
               <div className="text-xs text-gray-400 mb-1">Jadwal</div>
               <div className="text-sm font-semibold text-gray-700">
-                {activeShift
-                  ? `${activeShift.startTime}-${activeShift.endTime}`
-                  : schedule
-                  ? `${schedule.startTime}-${schedule.endTime}`
-                  : "08:00-17:00"}
+                {scheduleText}
               </div>
             </div>
           </div>

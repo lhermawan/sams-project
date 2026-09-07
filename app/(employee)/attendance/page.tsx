@@ -24,6 +24,7 @@ import {
   Plus,
   Trash2,
   Send,
+  X,
 } from "lucide-react";
 import { haversineDistance } from "@/lib/geolocation";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,7 @@ export default function AttendancePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successNote, setSuccessNote] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
 
   // Dual Photos for Absen Masuk (Face + Workplace)
   const [facePhoto, setFacePhoto] = useState<string | null>(null);
@@ -131,6 +133,7 @@ export default function AttendancePage() {
 
   // --- Clock ---
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -282,23 +285,27 @@ export default function AttendancePage() {
   };
 
   // --- Time display ---
-  const timeStr = currentTime.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Asia/Jakarta",
-  });
-  const dateStr = currentTime.toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Jakarta",
-  });
+  const timeStr = mounted
+    ? currentTime.toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZone: "Asia/Jakarta",
+      })
+    : "--:--:--";
+  const dateStr = mounted
+    ? currentTime.toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      })
+    : "Memuat waktu...";
 
   const attendanceType = todayStatus?.type ?? "MASUK";
   const isAlreadyDone =
-    todayStatus?.checkInTime !== null && todayStatus?.checkOutTime !== null;
+    !!todayStatus?.attendance?.checkInTime && !!todayStatus?.attendance?.checkOutTime;
   const schedule = todayStatus?.schedule;
 
   // Handover required check
@@ -660,31 +667,6 @@ export default function AttendancePage() {
             ) : (
               /* CAMERA & PHOTO VERIFICATION */
               <>
-                {/* Camera Viewfinder */}
-                {showCamera && (
-                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
-                    <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3]">
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                      <div className="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-[11px] text-center py-1 rounded">
-                        Posisikan kamera dengan jelas
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={capturePhoto}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-                      >
-                        <Camera size={18} /> Ambil Foto
-                      </button>
-                      <button
-                        onClick={stopCamera}
-                        className="px-4 bg-gray-100 text-gray-700 font-medium rounded-xl text-sm"
-                      >
-                        Batal
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Launch Camera Button */}
                 {!showCamera && !hasBothPhotos && (
@@ -939,6 +921,45 @@ export default function AttendancePage() {
                 Ya, Lanjutkan Pulang
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FULL-SCREEN CAMERA OVERLAY */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
+          <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            
+            {/* Guide Frame */}
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-8">
+              <div className="w-full max-w-sm aspect-[3/4] border-2 border-white/50 rounded-3xl relative">
+                <div className="absolute top-4 left-0 right-0 text-center text-white font-bold drop-shadow-md text-sm">
+                  {activeCaptureType === "face" ? "Posisikan Wajah di Tengah" :
+                   activeCaptureType === "workplace" ? "Foto Lokasi Kerja" :
+                   activeCaptureType === "handover" ? "Foto Bukti Serah Terima" :
+                   "Foto Titik Patroli"}
+                </div>
+              </div>
+            </div>
+            
+            {/* Close Button */}
+            <button
+              onClick={stopCamera}
+              className="absolute top-6 right-6 w-10 h-10 bg-black/50 text-white rounded-full flex items-center justify-center z-10 backdrop-blur-sm"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          {/* Controls */}
+          <div className="bg-black p-8 pb-12 flex justify-center items-center">
+            <button
+              onClick={capturePhoto}
+              className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center"
+            >
+              <div className="w-16 h-16 bg-white rounded-full active:scale-95 transition-transform" />
+            </button>
           </div>
         </div>
       )}

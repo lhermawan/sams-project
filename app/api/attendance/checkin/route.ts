@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       workplacePhotoUrl = workplacePhoto || null;
     }
 
-    const finalStatus = isLate ? "LATE" : "PENDING";
+    const finalStatus = isLate ? "LATE" : "VALID";
     const statusNote = isLate ? details.warning || `Terlambat ${lateMinutes} menit` : null;
 
     // 6. Create / Upsert Attendance Record

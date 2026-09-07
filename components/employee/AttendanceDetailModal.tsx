@@ -38,6 +38,20 @@ export interface AttendanceDetailData {
     startTime?: string;
     endTime?: string;
   } | null;
+  handover?: {
+    handoverNotes: string;
+    status: string;
+    photos: { photoUrl: string }[];
+  } | null;
+  periodicReports?: {
+    id: string;
+    checkpointSequence: number;
+    scheduledAt: string;
+    submittedAt: string | null;
+    status: string;
+    reportNotes: string | null;
+    photos: { photoUrl: string }[];
+  }[];
 }
 
 const STATUS_CONFIG: Record<
@@ -366,6 +380,79 @@ export default function AttendanceDetailModal({
                   Catatan Anda:
                 </span>{" "}
                 {attendance.notes}
+              </div>
+            )}
+
+            {/* Handover & Patroli (jika ada) */}
+            {attendance.handover && (
+              <div className="space-y-2 mt-4 pt-4 border-t">
+                <h4 className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                  <ShieldCheck size={16} className="text-amber-600" /> Serah Terima Tugas
+                </h4>
+                <div className="text-xs text-gray-700 whitespace-pre-wrap p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                  {attendance.handover.handoverNotes}
+                </div>
+                {attendance.handover.photos && attendance.handover.photos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {attendance.handover.photos.map((p, i) => (
+                      <div key={i} className="relative rounded-lg overflow-hidden aspect-[4/3] border cursor-pointer hover:opacity-90"
+                           onClick={() => setZoomPhoto({ url: p.photoUrl, label: "Foto Serah Terima" })}>
+                        <img src={p.photoUrl} alt="Handover" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {attendance.periodicReports && attendance.periodicReports.length > 0 && (
+              <div className="space-y-3 mt-4 pt-4 border-t">
+                <h4 className="font-bold text-sm text-gray-800 flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck size={16} className="text-purple-600" /> Laporan Patroli Berkala
+                  </div>
+                  <span className="text-xs font-normal bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                    {attendance.periodicReports.length} Titik
+                  </span>
+                </h4>
+                <div className="space-y-3">
+                  {attendance.periodicReports.map((report) => (
+                    <div key={report.id} className="border rounded-xl p-3 bg-gray-50/50 space-y-2 relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 w-1 h-full ${report.status === 'SUBMITTED' ? 'bg-green-500' : report.status === 'LATE' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-bold text-xs text-gray-700">Titik Ke-{report.checkpointSequence}</div>
+                          <div className="text-[10px] text-gray-500">
+                            Jadwal: {format(new Date(report.scheduledAt), "HH:mm")}
+                            {report.submittedAt && ` • Lapor: ${format(new Date(report.submittedAt), "HH:mm")}`}
+                          </div>
+                        </div>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          report.status === 'SUBMITTED' ? 'bg-green-100 text-green-700' :
+                          report.status === 'LATE' ? 'bg-amber-100 text-amber-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {report.status}
+                        </span>
+                      </div>
+                      {report.reportNotes && (
+                        <div className="text-[11px] text-gray-600 bg-white p-2 rounded border border-gray-100">
+                          {report.reportNotes}
+                        </div>
+                      )}
+                      {report.photos && report.photos.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1 mt-1">
+                          {report.photos.map((p, i) => (
+                            <div key={i} className="flex-shrink-0 w-16 h-16 relative rounded-md overflow-hidden border cursor-pointer hover:opacity-90"
+                                 onClick={() => setZoomPhoto({ url: p.photoUrl, label: `Patroli Ke-${report.checkpointSequence}` })}>
+                              <img src={p.photoUrl} alt="Patrol" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
