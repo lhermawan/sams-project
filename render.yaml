@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: sams-attendance
+    runtime: docker
+    plan: free
+    region: singapore
+    envVars:
+      - key: DATABASE_URL
+        value: "file:./dev.db"
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3000

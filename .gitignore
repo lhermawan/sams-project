@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.production
+node_modules/
+.next/
+public/uploads/
+*.log
+
+# SQLite
+prisma/dev.db
+prisma/*.db
+
+# Vercel
+.vercel
+.vercel
