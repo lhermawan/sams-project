@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UserCheck,
   UserX,
@@ -41,6 +41,7 @@ export interface Employee {
   photoUrl?: string | null;
   joinDate?: string | null;
   isActive: boolean;
+  employeeType?: { id: string; code: string; name: string } | null;
   user: {
     email: string;
     isActive: boolean;
@@ -66,6 +67,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
     phone: "",
     address: "",
     isActive: true,
+    employeeTypeId: "",
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
@@ -95,6 +97,15 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
     updatedCount: number;
     totalProcessed: number;
   } | null>(null);
+
+  const [employeeTypes, setEmployeeTypes] = useState<Array<{ id: string; code: string; name: string }>>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/employee-types")
+      .then((res) => res.json())
+      .then((json) => setEmployeeTypes(json.data || []))
+      .catch(() => {});
+  }, []);
 
   const parseCSVText = (text: string) => {
     const lines: string[] = [];
@@ -243,6 +254,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
       phone: emp.phone ?? "",
       address: emp.address ?? "",
       isActive: emp.isActive,
+      employeeTypeId: emp.employeeType?.id ?? "",
     });
     setEditError("");
     setEditSuccess("");
@@ -277,6 +289,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
                 phone: editForm.phone,
                 address: editForm.address,
                 isActive: editForm.isActive,
+                employeeType: employeeTypes.find((et) => et.id === editForm.employeeTypeId) || null,
                 user: {
                   ...item.user,
                   email: editForm.email,
@@ -430,6 +443,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
               <th className="px-6 py-3 text-left">ID Pegawai</th>
               <th className="px-6 py-3 text-left">Bagian</th>
               <th className="px-6 py-3 text-left">Jabatan</th>
+              <th className="px-6 py-3 text-left">Jenis Pegawai</th>
               <th className="px-6 py-3 text-left">Email Login</th>
               <th className="px-6 py-3 text-left">Status</th>
               <th className="px-6 py-3 text-left">Aksi</th>
@@ -438,7 +452,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
           <tbody className="divide-y divide-gray-50">
             {employees.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-12 text-gray-400">
+                <td colSpan={8} className="text-center py-12 text-gray-400">
                   Tidak ada data pegawai
                 </td>
               </tr>
@@ -460,6 +474,15 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
                   <td className="px-6 py-4 text-gray-700 font-mono text-xs">{emp.nip}</td>
                   <td className="px-6 py-4 text-gray-700">{emp.department}</td>
                   <td className="px-6 py-4 text-gray-700">{emp.position}</td>
+                  <td className="px-6 py-4">
+                    {emp.employeeType ? (
+                      <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full border border-indigo-200">
+                        {emp.employeeType.name}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs italic">Belum diatur</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-gray-700 font-mono text-xs select-all">
                     {emp.user.email}
                   </td>
@@ -841,6 +864,22 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
                   onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">Jenis Pegawai</label>
+                <select
+                  value={editForm.employeeTypeId}
+                  onChange={(e) => setEditForm({ ...editForm, employeeTypeId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                >
+                  <option value="">— Pilih Jenis Pegawai —</option>
+                  {employeeTypes.map((et) => (
+                    <option key={et.id} value={et.id}>
+                      {et.name} ({et.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

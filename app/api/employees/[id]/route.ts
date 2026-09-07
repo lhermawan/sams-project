@@ -18,6 +18,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       where: { id },
       include: {
         user: { select: { email: true, isActive: true } },
+        employeeType: { select: { id: true, code: true, name: true } },
         employeeShifts: { include: { shift: true }, where: { isActive: true } },
       },
     });
@@ -39,7 +40,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const body = await req.json();
-    const { name, nip, department, position, phone, address, isActive, email } = body;
+    const { name, nip, department, position, phone, address, isActive, email, employeeTypeId } = body;
 
     const employee = await prisma.employee.findUnique({
       where: { id },
@@ -81,6 +82,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         phone,
         address,
         isActive: typeof isActive !== "undefined" ? isActive : employee.isActive,
+        employeeTypeId: typeof employeeTypeId !== "undefined" ? (employeeTypeId || null) : employee.employeeTypeId,
       },
     });
 

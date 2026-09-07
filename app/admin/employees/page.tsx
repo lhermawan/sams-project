@@ -28,7 +28,7 @@ async function getEmployees(searchParams: SearchParams) {
   const [employees, total] = await Promise.all([
     prisma.employee.findMany({
       where,
-      include: { user: { select: { email: true, isActive: true } } },
+      include: { user: { select: { email: true, isActive: true } }, employeeType: { select: { id: true, code: true, name: true } } },
       orderBy: { name: "asc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -59,6 +59,7 @@ export default async function EmployeesPage({
     photoUrl: emp.photoUrl,
     joinDate: emp.joinDate ? emp.joinDate.toISOString() : null,
     isActive: emp.isActive,
+    employeeType: emp.employeeType ? { id: emp.employeeType.id, code: emp.employeeType.code, name: emp.employeeType.name } : null,
     user: {
       email: emp.user.email,
       isActive: emp.user.isActive,

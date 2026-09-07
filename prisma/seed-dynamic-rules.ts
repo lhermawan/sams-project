@@ -142,7 +142,7 @@ async function main() {
     },
     {
       ruleType: "PERIODIC_REPORT",
-      executionStage: "IN_SHIFT",
+      executionStage: "PRE_CHECK_OUT",
       priority: 2,
       configuration: JSON.stringify({
         intervalHours: 4,

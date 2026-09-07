@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const [employees, total] = await Promise.all([
       prisma.employee.findMany({
         where,
-        include: { user: { select: { email: true, isActive: true } } },
+        include: { user: { select: { email: true, isActive: true } }, employeeType: { select: { id: true, code: true, name: true } } },
         orderBy: { name: "asc" },
         skip: (page - 1) * limit,
         take: limit,
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     const body = await req.json();
-    let { email, password, nip, name, department, position, phone, address } = body;
+    let { email, password, nip, name, department, position, phone, address, employeeTypeId } = body;
 
     // Graceful defaults so nothing is ever blocked or rejected
     name = (name || "Pegawai Baru").trim();
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         role: "EMPLOYEE",
         isActive: true,
         employee: {
-          create: { nip, name, department, position, phone, address, isActive: true },
+          create: { nip, name, department, position, phone, address, isActive: true, employeeTypeId: employeeTypeId || null },
         },
       },
       include: { employee: true },

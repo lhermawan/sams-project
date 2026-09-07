@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
@@ -54,7 +54,17 @@ export default function NewEmployeePage() {
     position: "",
     phone: "",
     address: "",
+    employeeTypeId: "",
   });
+
+  const [employeeTypes, setEmployeeTypes] = useState<Array<{ id: string; code: string; name: string }>>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/employee-types")
+      .then((res) => res.json())
+      .then((json) => setEmployeeTypes(json.data || []))
+      .catch(() => {});
+  }, []);
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -180,6 +190,27 @@ export default function NewEmployeePage() {
             required
             placeholder="Software Engineer"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Jenis Pegawai
+          </label>
+          <select
+            value={form.employeeTypeId}
+            onChange={(e) => updateField("employeeTypeId", e.target.value)}
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-gray-900"
+          >
+            <option value="">— Pilih Jenis Pegawai —</option>
+            {employeeTypes.map((et) => (
+              <option key={et.id} value={et.id}>
+                {et.name} ({et.code})
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            Menentukan aturan absensi yang berlaku (shift, serah terima, patroli, dll.)
+          </p>
         </div>
 
         <FormField

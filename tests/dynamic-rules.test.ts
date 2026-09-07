@@ -110,6 +110,11 @@ async function runTests() {
 
     const workDate = new Date("2026-09-07T00:00:00.000Z");
 
+    // Fetch actual office coordinates for geofence tests
+    const office = await prisma.officeLocation.findFirst({ where: { isActive: true } });
+    const officeLat = office?.latitude ?? -6.2088;
+    const officeLng = office?.longitude ?? 106.8456;
+
     // ----------------------------------------------------
     // TEST 4: Late Rule Engine (Grace Period & Max Late Cutoff)
     // ----------------------------------------------------
@@ -120,8 +125,8 @@ async function runTests() {
       workDate,
       checkInTime: new Date("2026-09-07T07:08:00.000+07:00"),
       shift: { startTime: "07:00" },
-      latitude: -6.2088,
-      longitude: 106.8456,
+      latitude: officeLat,
+      longitude: officeLng,
     };
     const onTimeRes = await AttendanceRuleEngine.executeStage("CHECK_IN", onTimeContext);
     assert(
@@ -136,8 +141,8 @@ async function runTests() {
       workDate,
       checkInTime: new Date("2026-09-07T07:25:00.000+07:00"),
       shift: { startTime: "07:00" },
-      latitude: -6.2088,
-      longitude: 106.8456,
+      latitude: officeLat,
+      longitude: officeLng,
     };
     const lateRes = await AttendanceRuleEngine.executeStage("CHECK_IN", lateContext);
     assert(
@@ -152,8 +157,8 @@ async function runTests() {
       workDate,
       checkInTime: new Date("2026-09-07T09:10:00.000+07:00"), // 130 min late
       shift: { startTime: "07:00" },
-      latitude: -6.2088,
-      longitude: 106.8456,
+      latitude: officeLat,
+      longitude: officeLng,
     };
     const excessiveLateRes = await AttendanceRuleEngine.executeStage("CHECK_IN", excessiveLateContext);
     assert(
