@@ -36,6 +36,7 @@ export default function EmployeeTypesAdminPage() {
 
   // Modal new shift
   const [showShiftModal, setShowShiftModal] = useState(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
   const [shiftCode, setShiftCode] = useState("");
   const [shiftName, setShiftName] = useState("");
   const [shiftStartTime, setShiftStartTime] = useState("07:00");
@@ -159,6 +160,7 @@ export default function EmployeeTypesAdminPage() {
         body: JSON.stringify({
           action: "UPSERT_SHIFT",
           payload: {
+            shiftId: editingShiftId,
             code: shiftCode.toUpperCase().trim(),
             name: shiftName.trim(),
             startTime: shiftStartTime,
@@ -319,18 +321,45 @@ export default function EmployeeTypesAdminPage() {
                   <p className="text-sm text-gray-500">Mendukung shift normal, shift malam lintas hari, dan shift 24 jam.</p>
                 </div>
                 <button
-                  onClick={() => setShowShiftModal(true)}
+                  onClick={() => {
+                      setEditingShiftId(null);
+                      setShiftCode("");
+                      setShiftName("");
+                      setShiftStartTime("07:00");
+                      setShiftEndTime("19:00");
+                      setShiftCrossDay(false);
+                      setShift24Hours(false);
+                      setShiftDuration(720);
+                      setShowShiftModal(true);
+                    }}
                   className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5"
                 >
                   <Plus size={16} /> Tambah Shift
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {selectedType.shifts?.map((shift: any) => (
-                  <div key={shift.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-gray-900">{shift.name}</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {selectedType.shifts?.map((shift: any) => (
+                    <div key={shift.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-2 relative group">
+                      <button 
+                        onClick={() => {
+                          setEditingShiftId(shift.id);
+                          setShiftCode(shift.code);
+                          setShiftName(shift.name);
+                          setShiftStartTime(shift.startTime);
+                          setShiftEndTime(shift.endTime);
+                          setShiftCrossDay(shift.isCrossDay);
+                          setShift24Hours(shift.is24Hours);
+                          setShiftDuration(shift.durationMinutes || 720);
+                          setShowShiftModal(true);
+                        }}
+                        className="absolute top-3 right-3 p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-blue-600 hover:border-blue-200 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                        title="Edit Shift"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                      </button>
+                      <div className="flex items-center justify-between pr-8">
+                        <span className="font-bold text-gray-900">{shift.name}</span>
                       <span className="text-xs font-mono bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                         {shift.code}
                       </span>
@@ -548,7 +577,7 @@ export default function EmployeeTypesAdminPage() {
       {showShiftModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900">Tambah Shift Kerja</h3>
+            <h3 className="text-lg font-bold text-gray-900">{editingShiftId ? "Edit Shift Kerja" : "Tambah Shift Kerja"}</h3>
             <form onSubmit={handleSaveShift} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Kode Shift</label>
