@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Sliders,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -25,6 +26,7 @@ import { useAdminLayout } from "./AdminLayoutClient";
 const navItems = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/employees", icon: Users, label: "Pegawai" },
+  { href: "/admin/employee-types", icon: Sliders, label: "Jenis Pegawai & Aturan" },
   { href: "/admin/attendance", icon: CalendarCheck, label: "Absensi" },
   { href: "/admin/shifts", icon: Clock, label: "Shift" },
   { href: "/admin/schedule", icon: Calendar, label: "Jadwal Kerja" },

@@ -2,17 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { attendanceRateLimiter } from "@/lib/rate-limit";
-import { isWithinRadius } from "@/lib/geolocation";
-import { calcLateMinutes } from "@/lib/utils";
+import { WorkDateResolver } from "@/lib/engine/work-date-resolver";
+import { AttendanceRuleEngine } from "@/lib/engine/rule-engine";
+import { PeriodicReportGenerator } from "@/lib/engine/periodic-report-generator";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "unknown";
     if (!attendanceRateLimiter.check(ip)) {
-      return NextResponse.json({ error: "Terlalu banyak percobaan. Coba lagi dalam 1 menit." }, { status: 429 });
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Coba lagi dalam 1 menit." },
+        { status: 429 }
+      );
     }
 
     const session = await auth();
@@ -20,36 +24,106 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { latitude, longitude, distance, photo, workplacePhoto } = await req.json();
+    const {
+      latitude,
+      longitude,
+      photo,
+      workplacePhoto,
+      handoverId,
+      isMockLocation,
+      notes,
+    } = await req.json();
 
-    // ── Server-side GPS calculation ──────────────────────────────────────
-    const office = await prisma.officeLocation.findFirst({
-      where: { isActive: true },
+    const employee = await prisma.employee.findUnique({
+      where: { id: session.user.employeeId },
+      include: { employeeType: true },
     });
 
-    let calculatedDistance = distance ?? 0;
-    let isInside = true;
-
-    if (office && latitude && longitude) {
-      const validation = isWithinRadius(latitude, longitude, office.latitude, office.longitude, office.radius);
-      calculatedDistance = validation.distance;
-      isInside = validation.valid;
+    if (!employee || !employee.employeeTypeId) {
+      return NextResponse.json(
+        { error: "Data jenis pegawai Anda belum dikonfigurasi. Hubungi HRD." },
+        { status: 400 }
+      );
     }
 
-    // ── Check if already checked in today ─────────────────────────────────
-    const today = new Date();
-    const existing = await prisma.attendance.findFirst({
+    const now = new Date();
+
+    // 1. Resolve Work Session & Date
+    const sessionInfo = await WorkDateResolver.resolveCheckIn(employee.id, now);
+
+    // If an active session already exists and hasn't checked out
+    if (!sessionInfo.isNewSession && sessionInfo.activeAttendance) {
+      return NextResponse.json(
+        {
+          error: "Anda sudah melakukan absen masuk dan sesi kerja masih aktif.",
+          attendance: sessionInfo.activeAttendance,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if an attendance record already exists for this workDate
+    const existingForWorkDate = await prisma.attendance.findFirst({
       where: {
-        employeeId: session.user.employeeId,
-        date: { gte: startOfDay(today), lte: endOfDay(today) },
+        employeeId: employee.id,
+        workDate: sessionInfo.workDate,
       },
     });
 
-    if (existing?.checkInTime) {
-      return NextResponse.json({ error: "Sudah melakukan absen masuk hari ini" }, { status: 400 });
+    if (existingForWorkDate?.checkInTime) {
+      return NextResponse.json(
+        { error: "Anda sudah melakukan absen masuk untuk jadwal/shift tanggal kerja ini." },
+        { status: 400 }
+      );
     }
 
-    // ── Save photos (Serverless compatible: store directly or write if possible) ──
+    // 2. Prepare Context for Rule Engine
+    const ruleContext = {
+      employeeId: employee.id,
+      employeeTypeId: employee.employeeTypeId,
+      workDate: sessionInfo.workDate,
+      checkInTime: now,
+      latitude,
+      longitude,
+      isMockLocation: !!isMockLocation,
+      handoverId: handoverId || null,
+      notes: notes || null,
+      shift: sessionInfo.shift,
+      schedule: sessionInfo.schedule,
+    };
+
+    // 3. Execute Stage: PRE_CHECK_IN (Handover verification)
+    const preCheckInResult = await AttendanceRuleEngine.executeStage(
+      "PRE_CHECK_IN",
+      ruleContext
+    );
+
+    if (!preCheckInResult.isPassed) {
+      return NextResponse.json(
+        { error: preCheckInResult.message || "Gagal verifikasi pra-absen." },
+        { status: 422 }
+      );
+    }
+
+    // 4. Execute Stage: CHECK_IN (Location Geofence, Late Tolerance & Max Cutoff)
+    const checkInResult = await AttendanceRuleEngine.executeStage(
+      "CHECK_IN",
+      ruleContext
+    );
+
+    if (!checkInResult.isPassed) {
+      return NextResponse.json(
+        { error: checkInResult.message || "Validasi absen masuk gagal." },
+        { status: 422 }
+      );
+    }
+
+    const details = checkInResult.combinedDetails || {};
+    const lateMinutes = details.lateMinutes ?? 0;
+    const distanceMeters = details.distance ?? 0;
+    const isLate = details.isLate ?? false;
+
+    // 5. Handle Photos Upload
     let photoUrl = photo;
     let workplacePhotoUrl = workplacePhoto || null;
 
@@ -57,84 +131,67 @@ export async function POST(req: NextRequest) {
       const uploadDir = join(process.cwd(), "public", "uploads", "attendance");
       await mkdir(uploadDir, { recursive: true });
 
-      if (photo && photo.startsWith("data:image")) {
+      if (photo && typeof photo === "string" && photo.startsWith("data:image")) {
         const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
-        const filename = `checkin_${session.user.employeeId}_${Date.now()}.jpg`;
+        const filename = `checkin_${employee.id}_${Date.now()}.jpg`;
         await writeFile(join(uploadDir, filename), buffer);
         photoUrl = `/uploads/attendance/${filename}`;
       }
 
-      if (workplacePhoto && workplacePhoto.startsWith("data:image")) {
+      if (
+        workplacePhoto &&
+        typeof workplacePhoto === "string" &&
+        workplacePhoto.startsWith("data:image")
+      ) {
         const base64Workplace = workplacePhoto.replace(/^data:image\/\w+;base64,/, "");
         const workplaceBuffer = Buffer.from(base64Workplace, "base64");
-        const workplaceFilename = `workplace_${session.user.employeeId}_${Date.now()}.jpg`;
+        const workplaceFilename = `workplace_${employee.id}_${Date.now()}.jpg`;
         await writeFile(join(uploadDir, workplaceFilename), workplaceBuffer);
         workplacePhotoUrl = `/uploads/attendance/${workplaceFilename}`;
       }
     } catch {
-      // In serverless environment (Vercel read-only filesystem), store data URI directly
       photoUrl = photo;
       workplacePhotoUrl = workplacePhoto || null;
     }
 
-    // ── Get active schedule for late calculation ───────────────────────────
-    const schedule = await prisma.workSchedule.findFirst({
-      where: { isActive: true },
-      orderBy: { effectiveFrom: "desc" },
-    });
+    const finalStatus = isLate ? "LATE" : "PENDING";
+    const statusNote = isLate ? details.warning || `Terlambat ${lateMinutes} menit` : null;
 
-    // Get active shift for this employee
-    const employeeShift = await prisma.employeeShift.findFirst({
-      where: { employeeId: session.user.employeeId, isActive: true },
-      include: { shift: true },
-      orderBy: { effectiveFrom: "desc" },
-    });
-
-    const checkInNow = new Date();
-    const scheduleStart = employeeShift?.shift.startTime ?? schedule?.startTime ?? "08:00";
-    const toleranceMin = employeeShift?.shift.toleranceMin ?? schedule?.toleranceMin ?? 15;
-
-    // Calculate late minutes (Never block checkin, but record lateness accurately)
-    const lateMinutes = calcLateMinutes(checkInNow, scheduleStart, toleranceMin);
-    // Initial status requires Admin validation: LATE if past tolerance, PENDING if on-time
-    const status = lateMinutes > 0 ? "LATE" : "PENDING";
-    const checkinNotes = lateMinutes > 0 ? `Terlambat ${lateMinutes} menit (Jadwal: ${scheduleStart} WIB)` : null;
-
-    // ── Upsert attendance record ───────────────────────────────────────────
-    const attendance = await prisma.attendance.upsert({
-      where: existing
-        ? { id: existing.id }
-        : { employeeId_date: { employeeId: session.user.employeeId, date: startOfDay(today) } },
-      update: {
-        checkInTime: checkInNow,
+    // 6. Create / Upsert Attendance Record
+    const attendance = await prisma.attendance.create({
+      data: {
+        employeeId: employee.id,
+        employeeTypeId: employee.employeeTypeId,
+        shiftId: sessionInfo.shift?.id || null,
+        date: sessionInfo.workDate,
+        workDate: sessionInfo.workDate,
+        checkInTime: now,
         checkInPhoto: photoUrl,
         workplacePhoto: workplacePhotoUrl,
         checkInLat: latitude,
         checkInLng: longitude,
-        checkInDistance: calculatedDistance,
+        checkInDistance: distanceMeters,
         lateMinutes,
-        status,
-        notes: checkinNotes,
-        shiftId: employeeShift?.shiftId ?? null,
-      },
-      create: {
-        employeeId: session.user.employeeId,
-        date: startOfDay(today),
-        checkInTime: checkInNow,
-        checkInPhoto: photoUrl,
-        workplacePhoto: workplacePhotoUrl,
-        checkInLat: latitude,
-        checkInLng: longitude,
-        checkInDistance: calculatedDistance,
-        lateMinutes,
-        status,
-        notes: checkinNotes,
-        shiftId: employeeShift?.shiftId ?? null,
+        status: finalStatus,
+        notes: statusNote,
       },
     });
 
-    // ── Audit log ──────────────────────────────────────────────────────────
+    // 7. Link Handover to Attendance if provided
+    if (handoverId) {
+      await prisma.attendanceHandover.update({
+        where: { id: handoverId },
+        data: { attendanceId: attendance.id },
+      }).catch(() => {});
+    }
+
+    // 8. Auto-Generate Periodic Patrol Reports if applicable
+    const scheduledReportsCount = await PeriodicReportGenerator.generateForAttendance(
+      attendance.id
+    );
+
+    // 9. Audit Log & Notification
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
@@ -142,46 +199,48 @@ export async function POST(req: NextRequest) {
         entity: "Attendance",
         entityId: attendance.id,
         newData: JSON.stringify({
-          checkInTime: checkInNow,
-          distance: calculatedDistance,
-          status,
+          workDate: sessionInfo.workDate,
+          checkInTime: now,
+          status: finalStatus,
           lateMinutes,
-          hasWorkplacePhoto: !!workplacePhotoUrl,
+          shift: sessionInfo.shift?.name || "Non-Shift",
+          periodicReportsCreated: scheduledReportsCount,
         }),
-        ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+        ipAddress: ip,
       },
     });
 
-    // ── Notification ───────────────────────────────────────────────────────
     await prisma.notification.create({
       data: {
         userId: session.user.id,
-        type: lateMinutes > 0 ? "LATE_WARNING" : "ATTENDANCE_SUCCESS",
-        title: lateMinutes > 0 ? `Terlambat ${lateMinutes} Menit` : "Absen Masuk Berhasil",
-        message: lateMinutes > 0
-          ? `Anda terlambat ${lateMinutes} menit dari jadwal masuk (${scheduleStart} WIB). Absen masuk berhasil dicatat.`
-          : `Absen masuk berhasil dicatat pada ${checkInNow.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta" })} WIB`,
+        type: isLate ? "LATE_WARNING" : "ATTENDANCE_SUCCESS",
+        title: isLate ? `Terlambat ${lateMinutes} Menit` : "Absen Masuk Berhasil",
+        message: isLate
+          ? `Absen masuk dicatat pada ${now.toLocaleTimeString("id-ID")} WIB (Terlambat ${lateMinutes} menit).`
+          : `Absen masuk berhasil dicatat pada ${now.toLocaleTimeString("id-ID")} WIB. Selamat bertugas!`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      attendance: {
+      message: isLate
+        ? `Absen masuk berhasil dicatat. Anda terlambat ${lateMinutes} menit.`
+        : "Absen masuk berhasil dicatat. Selamat bertugas!",
+      data: {
         id: attendance.id,
-        checkInTime: checkInNow,
-        status,
-        lateMinutes,
-        checkInPhoto: photoUrl,
-        workplacePhoto: workplacePhotoUrl,
+        workDate: attendance.workDate,
+        checkInTime: attendance.checkInTime,
+        status: attendance.status,
+        lateMinutes: attendance.lateMinutes,
+        shiftName: sessionInfo.shift?.name || sessionInfo.schedule?.name || "Jadwal Reguler",
+        periodicReportsCount: scheduledReportsCount,
       },
-      lateMinutes,
-      isLate: lateMinutes > 0,
-      warningMessage: lateMinutes > 0
-        ? `Anda terlambat ${lateMinutes} menit (Jadwal: ${scheduleStart} WIB). Absensi tetap dicatat.`
-        : undefined,
     });
-  } catch (err) {
-    console.error("POST /api/attendance/checkin:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  } catch (err: any) {
+    console.error("POST /api/attendance/checkin error:", err);
+    return NextResponse.json(
+      { error: err.message || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // ─── Auth & Identity ─────────────────────────────────────────────────────────
@@ -29,28 +28,56 @@ model User {
   @@map("users")
 }
 
+// ─── Employee Type ───────────────────────────────────────────────────────────
+
+model EmployeeType {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  description  String?
+  scheduleType String   @default("NON_SHIFT") // "SHIFT" or "NON_SHIFT"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employees     Employee[]
+  shifts        Shift[]
+  workSchedules WorkSchedule[]
+  rules         AttendanceRule[]
+  attendances   Attendance[]
+
+  @@map("employee_types")
+}
+
 // ─── Employee ────────────────────────────────────────────────────────────────
 
 model Employee {
-  id         String   @id @default(cuid())
-  nip        String   @unique
-  name       String
-  department String
-  position   String
-  phone      String?
-  address    String?
-  photoUrl   String?
-  joinDate   DateTime @default(now())
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String        @id @default(cuid())
+  nip            String        @unique
+  name           String
+  department     String
+  position       String
+  phone          String?
+  address        String?
+  photoUrl       String?
+  joinDate       DateTime      @default(now())
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  attendances    Attendance[]
-  employeeShifts EmployeeShift[]
-  leaveRequests  LeaveRequest[]
+  employeeTypeId String?
+  employeeType   EmployeeType? @relation(fields: [employeeTypeId], references: [id])
+
+  attendances     Attendance[]
+  employeeShifts  EmployeeShift[]
+  rosters         EmployeeShiftRoster[]
+  leaveRequests   LeaveRequest[]
+  handovers       AttendanceHandover[]
+  periodicReports PeriodicReport[]
+  ruleLogs        AttendanceRuleLog[]
 
   @@map("employees")
 }
@@ -75,16 +102,21 @@ model OfficeLocation {
 // ─── Work Schedule ───────────────────────────────────────────────────────────
 
 model WorkSchedule {
-  id            String    @id @default(cuid())
-  name          String
-  startTime     String
-  endTime       String
-  toleranceMin  Int       @default(15)
-  effectiveFrom DateTime
-  effectiveTo   DateTime?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String        @id @default(cuid())
+  employeeTypeId String?
+  employeeType   EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
+  name           String
+  dayOfWeek      Int?          // 1=Monday, 2=Tuesday, ..., 5=Friday, 6=Saturday, 7=Sunday
+  isWorkDay      Boolean       @default(true)
+  startTime      String?
+  endTime        String?
+  isCrossDay     Boolean       @default(false)
+  toleranceMin   Int           @default(15)
+  effectiveFrom  DateTime      @default(now())
+  effectiveTo    DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("work_schedules")
 }
@@ -104,20 +136,27 @@ model Holiday {
 // ─── Shift ───────────────────────────────────────────────────────────────────
 
 model Shift {
-  id           String  @id @default(cuid())
-  name         String
-  code         String  @unique
-  startTime    String
-  endTime      String
-  isCrossDay   Boolean @default(false)
-  toleranceMin Int     @default(15)
-  isActive     Boolean @default(true)
+  id                    String        @id @default(cuid())
+  employeeTypeId        String?
+  employeeType          EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
+  name                  String
+  code                  String        @unique
+  startTime             String
+  endTime               String
+  isCrossDay            Boolean       @default(false)
+  is24Hours             Boolean       @default(false)
+  durationMinutes       Int           @default(480)
+  toleranceMin          Int           @default(15)
+  checkInStartBufferMin Int           @default(120)
+  checkInEndBufferMin   Int           @default(360)
+  isActive              Boolean       @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
-  employeeShifts EmployeeShift[]
-  attendances    Attendance[]
+  employeeShifts        EmployeeShift[]
+  rosters               EmployeeShiftRoster[]
+  attendances           Attendance[]
 
   @@map("shifts")
 }
@@ -137,13 +176,51 @@ model EmployeeShift {
   @@map("employee_shifts")
 }
 
+model EmployeeShiftRoster {
+  id         String   @id @default(cuid())
+  employeeId String
+  shiftId    String?
+  rosterDate DateTime
+  isDayOff   Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift      Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  @@unique([employeeId, rosterDate])
+  @@map("employee_shift_rosters")
+}
+
+// ─── Dynamic Attendance Rules ────────────────────────────────────────────────
+
+model AttendanceRule {
+  id             String       @id @default(cuid())
+  employeeTypeId String
+  ruleType       String       // "HANDOVER", "PERIODIC_REPORT", "LOCATION", "LATE_TOLERANCE", etc.
+  executionStage String       // "PRE_CHECK_IN", "CHECK_IN", "IN_SHIFT", "PRE_CHECK_OUT", "CHECK_OUT"
+  configuration  String       // JSON string storing dynamic settings
+  priority       Int          @default(0)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeTypeId, ruleType])
+  @@map("attendance_rules")
+}
+
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 model Attendance {
-  id               String           @id @default(cuid())
+  id               String               @id @default(cuid())
   employeeId       String
+  employeeTypeId   String?
   shiftId          String?
   date             DateTime
+  workDate         DateTime?
   checkInTime      DateTime?
   checkOutTime     DateTime?
   checkInPhoto     String?
@@ -155,21 +232,117 @@ model Attendance {
   checkOutLat      Float?
   checkOutLng      Float?
   checkOutDistance Float?
-  lateMinutes      Int              @default(0)
-  earlyOutMinutes  Int              @default(0)
-  status           String           @default("PENDING")
+  lateMinutes      Int                  @default(0)
+  earlyOutMinutes  Int                  @default(0)
+  status           String               @default("PENDING") // PENDING, VALID, LATE, INCOMPLETE, REJECTED
   notes            String?
   adminNotes       String?
   validatedBy      String?
   validatedAt      DateTime?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  shift    Shift?   @relation(fields: [shiftId], references: [id])
+  employee         Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeType     EmployeeType?        @relation(fields: [employeeTypeId], references: [id])
+  shift            Shift?               @relation(fields: [shiftId], references: [id])
+  handover         AttendanceHandover?
+  periodicReports  PeriodicReport[]
+  ruleLogs         AttendanceRuleLog[]
 
   @@unique([employeeId, date])
   @@map("attendances")
+}
+
+// ─── Handover (Serah Terima Tugas) ──────────────────────────────────────────
+
+model AttendanceHandover {
+  id             String                    @id @default(cuid())
+  attendanceId   String?                   @unique
+  employeeId     String
+  handedOverById String?
+  handoverNotes  String
+  itemChecklist  String?
+  status         String                    @default("COMPLETED")
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  attendance     Attendance?               @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee       Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  photos         AttendanceHandoverPhoto[]
+
+  @@map("attendance_handovers")
+}
+
+model AttendanceHandoverPhoto {
+  id            String             @id @default(cuid())
+  handoverId    String
+  photoUrl      String
+  fileSizeBytes Int?
+  mimeType      String?
+  createdAt     DateTime           @default(now())
+
+  handover      AttendanceHandover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_handover_photos")
+}
+
+// ─── Periodic Report (Laporan Patroli Berkala) ──────────────────────────────
+
+model PeriodicReport {
+  id                 String                @id @default(cuid())
+  attendanceId       String
+  employeeId         String
+  checkpointSequence Int
+  scheduledAt        DateTime
+  toleranceStartAt   DateTime
+  toleranceEndAt     DateTime
+  submittedAt        DateTime?
+  latitude           Float?
+  longitude          Float?
+  distanceMeters     Float?
+  reportNotes        String?
+  status             String                @default("PENDING") // PENDING, SUBMITTED, LATE, MISSED, REJECTED
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  attendance         Attendance            @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee           Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  photos             PeriodicReportPhoto[]
+
+  @@map("periodic_reports")
+}
+
+model PeriodicReportPhoto {
+  id               String         @id @default(cuid())
+  periodicReportId String
+  photoUrl         String
+  fileHash         String?
+  fileSizeBytes    Int?
+  mimeType         String?
+  createdAt        DateTime       @default(now())
+
+  periodicReport   PeriodicReport @relation(fields: [periodicReportId], references: [id], onDelete: Cascade)
+
+  @@map("periodic_report_photos")
+}
+
+// ─── Rule Logs ───────────────────────────────────────────────────────────────
+
+model AttendanceRuleLog {
+  id              String      @id @default(cuid())
+  attendanceId    String?
+  employeeId      String
+  ruleType        String
+  executionStage  String
+  isPassed        Boolean
+  failureReason   String?
+  contextSnapshot String?
+  createdAt       DateTime    @default(now())
+
+  attendance      Attendance? @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_rule_logs")
 }
 
 // ─── Leave Request ────────────────────────────────────────────────────────────

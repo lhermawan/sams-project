@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { startOfDay, endOfDay } from "date-fns";
+import { ScheduleResolver } from "@/lib/engine/schedule-resolver";
+import { formatTime } from "@/lib/utils";
+import { startOfDay } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
@@ -12,150 +14,183 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const today = new Date();
-    const [attendance, employee, settingsList] = await Promise.all([
-      prisma.attendance.findFirst({
-        where: {
-          employeeId: session.user.employeeId,
-          date: {
-            gte: startOfDay(today),
-            lte: endOfDay(today),
+    const employee = await prisma.employee.findUnique({
+      where: { id: session.user.employeeId },
+      include: {
+        employeeType: {
+          include: {
+            rules: { where: { isActive: true } },
           },
         },
-      }),
-      prisma.employee.findUnique({
-        where: { id: session.user.employeeId },
-        select: { id: true, name: true, department: true },
-      }),
-      prisma.systemSetting.findMany({
-        where: {
-          key: {
-            in: [
-              "late_tolerance_min",
-              "saturday_work_mode",
-              "sunday_work_mode",
-              "weekend_working_departments",
-            ],
-          },
-        },
-      }),
-    ]);
+      },
+    });
 
-    const settingsMap: Record<string, string> = {};
-    for (const s of settingsList) settingsMap[s.key] = s.value;
-
-    // ── Check Saturday / Sunday conditions ────────────────────────────────
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-    const empDept = (employee?.department || "").trim().toLowerCase();
-
-    const satMode = settingsMap["saturday_work_mode"] || "LIBUR_SEMUA";
-    const sunMode = settingsMap["sunday_work_mode"] || "LIBUR_SEMUA";
-    const weekendDepts = (settingsMap["weekend_working_departments"] || "")
-      .split(",")
-      .map((d) => d.trim().toLowerCase())
-      .filter(Boolean);
-
-    let isWeekendHoliday = false;
-    let weekendNote = "";
-
-    if (dayOfWeek === 6) {
-      // Saturday
-      if (satMode === "LIBUR_SEMUA") {
-        isWeekendHoliday = true;
-        weekendNote = "Hari ini Sabtu (Jadwal Libur Umum). Absensi tetap diizinkan untuk dinas/piket.";
-      } else if (satMode === "BAGIAN_TERTENTU") {
-        const isDeptWorking = weekendDepts.some((d) => empDept.includes(d) || d.includes(empDept));
-        if (!isDeptWorking) {
-          isWeekendHoliday = true;
-          weekendNote = `Hari ini Sabtu (Jadwal Libur Bagian ${employee?.department || "Anda"}). Absensi tetap diizinkan untuk piket/lembur.`;
-        }
-      }
-    } else if (dayOfWeek === 0) {
-      // Sunday
-      if (sunMode === "LIBUR_SEMUA") {
-        isWeekendHoliday = true;
-        weekendNote = "Hari ini Minggu (Jadwal Libur Umum). Absensi tetap diizinkan untuk dinas/piket.";
-      } else if (sunMode === "BAGIAN_TERTENTU") {
-        const isDeptWorking = weekendDepts.some((d) => empDept.includes(d) || d.includes(empDept));
-        if (!isDeptWorking) {
-          isWeekendHoliday = true;
-          weekendNote = `Hari ini Minggu (Jadwal Libur Bagian ${employee?.department || "Anda"}). Absensi tetap diizinkan untuk piket/lembur.`;
-        }
-      }
+    if (!employee || !employee.employeeType) {
+      return NextResponse.json(
+        { error: "Data pegawai atau jenis pegawai belum lengkap." },
+        { status: 400 }
+      );
     }
 
-    // ── Get active shift or schedule ──────────────────────────────────────
-    const employeeShift = await prisma.employeeShift.findFirst({
-      where: { employeeId: session.user.employeeId, isActive: true },
-      include: { shift: true },
-      orderBy: { effectiveFrom: "desc" },
+    // 1. Resolve Active Schedule
+    const resolvedSchedule = await ScheduleResolver.resolveForEmployee(
+      employee.id,
+      new Date()
+    );
+
+    // 2. Find Active Attendance (checkOutTime is null) or Today's Attendance
+    const today = startOfDay(new Date());
+
+    let attendance = await prisma.attendance.findFirst({
+      where: {
+        employeeId: employee.id,
+        checkOutTime: null,
+      },
+      include: {
+        shift: true,
+        handover: { include: { photos: true } },
+        periodicReports: {
+          include: { photos: true },
+          orderBy: { checkpointSequence: "asc" },
+        },
+      },
+      orderBy: { checkInTime: "desc" },
     });
-
-    const workSchedule = await prisma.workSchedule.findFirst({
-      where: { isActive: true },
-      orderBy: { effectiveFrom: "desc" },
-    });
-
-    const parsedTolerance = parseInt(settingsMap["late_tolerance_min"] || "15") || 15;
-
-    const scheduleData = {
-      name: employeeShift?.shift.name ?? workSchedule?.name ?? "Jadwal Normal",
-      startTime: employeeShift?.shift.startTime ?? workSchedule?.startTime ?? "08:00",
-      endTime: employeeShift?.shift.endTime ?? workSchedule?.endTime ?? "17:00",
-      toleranceMin: employeeShift?.shift.toleranceMin ?? workSchedule?.toleranceMin ?? parsedTolerance,
-      isCrossDay: employeeShift?.shift.isCrossDay ?? false,
-    };
 
     if (!attendance) {
-      return NextResponse.json({
-        checkInTime: null,
-        checkOutTime: null,
-        checkInPhoto: null,
-        workplacePhoto: null,
-        type: "MASUK",
-        schedule: scheduleData,
-        isWeekendHoliday,
-        weekendNote,
-        department: employee?.department || "",
-      }, {
-        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      attendance = await prisma.attendance.findFirst({
+        where: {
+          employeeId: employee.id,
+          workDate: today,
+        },
+        include: {
+          shift: true,
+          handover: { include: { photos: true } },
+          periodicReports: {
+            include: { photos: true },
+            orderBy: { checkpointSequence: "asc" },
+          },
+        },
+        orderBy: { checkInTime: "desc" },
       });
     }
 
-    const checkInTime = attendance.checkInTime
-      ? new Date(attendance.checkInTime).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "Asia/Jakarta",
-        })
+    // 3. Check Handover Requirement
+    const handoverRule = employee.employeeType.rules.find((r) => r.ruleType === "HANDOVER");
+    let requiresHandover = false;
+    let handoverConfig: any = {};
+    if (handoverRule) {
+      try {
+        handoverConfig = JSON.parse(handoverRule.configuration);
+        requiresHandover = handoverConfig.requireHandover ?? true;
+      } catch {
+        requiresHandover = true;
+      }
+    }
+
+    // Check if employee has a completed handover waiting to be linked to checkin
+    let pendingHandover = null;
+    if (requiresHandover && !attendance?.checkInTime) {
+      pendingHandover = await prisma.attendanceHandover.findFirst({
+        where: {
+          employeeId: employee.id,
+          attendanceId: null,
+          status: "COMPLETED",
+        },
+        include: { photos: true },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    // 4. Check Periodic Report Rule Config
+    const reportRule = employee.employeeType.rules.find((r) => r.ruleType === "PERIODIC_REPORT");
+    let periodicReportConfig: any = {};
+    if (reportRule) {
+      try {
+        periodicReportConfig = JSON.parse(reportRule.configuration);
+      } catch {
+        periodicReportConfig = {};
+      }
+    }
+
+    // 5. Build Response
+    const checkInTimeFormatted = attendance?.checkInTime
+      ? formatTime(attendance.checkInTime)
       : null;
 
-    const checkOutTime = attendance.checkOutTime
-      ? new Date(attendance.checkOutTime).toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "Asia/Jakarta",
-        })
+    const checkOutTimeFormatted = attendance?.checkOutTime
+      ? formatTime(attendance.checkOutTime)
       : null;
 
-    return NextResponse.json({
-      id: attendance.id,
-      checkInTime,
-      checkOutTime,
-      checkInPhoto: attendance.checkInPhoto,
-      workplacePhoto: attendance.workplacePhoto,
-      status: attendance.status,
-      lateMinutes: attendance.lateMinutes,
-      type: attendance.checkInTime && !attendance.checkOutTime ? "PULANG" : "MASUK",
-      schedule: scheduleData,
-      isWeekendHoliday,
-      weekendNote,
-      department: employee?.department || "",
-    }, {
-      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
-    });
-  } catch (err) {
-    console.error("GET /api/attendance/today:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    const type = attendance?.checkInTime && !attendance?.checkOutTime ? "PULANG" : "MASUK";
+
+    return NextResponse.json(
+      {
+        success: true,
+        employee: {
+          id: employee.id,
+          name: employee.name,
+          nip: employee.nip,
+          department: employee.department,
+          position: employee.position,
+          employeeType: {
+            id: employee.employeeType.id,
+            code: employee.employeeType.code,
+            name: employee.employeeType.name,
+            scheduleType: employee.employeeType.scheduleType,
+          },
+        },
+        schedule: {
+          name: resolvedSchedule.scheduleName || "Jadwal Kerja",
+          startTime: resolvedSchedule.startTime || "08:00",
+          endTime: resolvedSchedule.endTime || "17:00",
+          isWorkDay: resolvedSchedule.isWorkDay,
+          isHoliday: resolvedSchedule.isHoliday,
+          holidayName: resolvedSchedule.holidayName,
+          isDayOff: resolvedSchedule.isDayOff,
+          isCrossDay: resolvedSchedule.isCrossDay || false,
+          is24Hours: resolvedSchedule.is24Hours || false,
+        },
+        attendance: attendance
+          ? {
+              id: attendance.id,
+              workDate: attendance.workDate,
+              checkInTime: checkInTimeFormatted,
+              checkOutTime: checkOutTimeFormatted,
+              rawCheckInTime: attendance.checkInTime,
+              rawCheckOutTime: attendance.checkOutTime,
+              checkInPhoto: attendance.checkInPhoto,
+              workplacePhoto: attendance.workplacePhoto,
+              checkOutPhoto: attendance.checkOutPhoto,
+              status: attendance.status,
+              lateMinutes: attendance.lateMinutes,
+              earlyOutMinutes: attendance.earlyOutMinutes,
+              notes: attendance.notes,
+              periodicReports: attendance.periodicReports || [],
+            }
+          : null,
+        handover: {
+          isRequired: requiresHandover,
+          isCompleted: !!attendance?.handover || !!pendingHandover,
+          pendingHandoverId: pendingHandover?.id || null,
+          minPhotos: handoverConfig.minPhotos ?? 1,
+        },
+        periodicReportRule: {
+          hasPeriodicReports: !!reportRule,
+          intervalHours: periodicReportConfig.intervalHours ?? 4,
+          minPhotos: periodicReportConfig.minPhotos ?? 3,
+        },
+        type,
+      },
+      {
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      }
+    );
+  } catch (err: any) {
+    console.error("GET /api/attendance/today error:", err);
+    return NextResponse.json(
+      { error: err.message || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -43,7 +43,10 @@ export async function GET(req: NextRequest) {
         where,
         include: {
           employee: { select: { id: true, name: true, department: true, nip: true } },
+          employeeType: { select: { id: true, name: true, code: true, scheduleType: true } },
           shift: { select: { name: true, startTime: true, toleranceMin: true } },
+          handover: { include: { photos: true } },
+          periodicReports: { include: { photos: true }, orderBy: { checkpointSequence: "asc" } },
         },
         orderBy: [{ date: "desc" }, { checkInTime: "desc" }],
         skip: (page - 1) * limit,
