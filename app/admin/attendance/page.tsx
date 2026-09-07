@@ -42,6 +42,8 @@ interface AttendanceRecord {
   validatedBy?: string | null;
   employee: { id: string; name: string; department: string; nip: string };
   shift: { name: string } | null;
+  handover?: any;
+  periodicReports?: any[];
 }
 
 interface SimpleEmployee {
@@ -205,12 +207,11 @@ export default function AttendanceAdminPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <ShieldCheck className="text-blue-600" size={24} />
-            Monitoring & Validasi Absensi
-          </h2>
-          <p className="text-sm text-gray-500">
-            Periksa kebenaran kehadiran pegawai, verifikasi foto lokasi anti fake GPS, dan validasi atau tolak absensi
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            Monitoring Absensi
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Pantau kehadiran pegawai secara real-time dan verifikasi foto lokasi.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -732,7 +733,7 @@ export default function AttendanceAdminPage() {
                   </div>
                   {reportModal.handover.photos && reportModal.handover.photos.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {reportModal.handover.photos.map((p, i) => (
+                      {reportModal.handover.photos.map((p: any, i: number) => (
                         <div key={i} className="relative rounded-lg overflow-hidden aspect-[4/3] border shadow-sm cursor-pointer hover:opacity-90"
                              onClick={() => setLightboxInfo({ url: p.photoUrl, title: "Foto Serah Terima" })}>
                           <img src={p.photoUrl} alt="Handover" className="w-full h-full object-cover" />
@@ -753,7 +754,7 @@ export default function AttendanceAdminPage() {
                     </span>
                   </h4>
                   <div className="space-y-4">
-                    {reportModal.periodicReports.map((report, idx) => (
+                    {reportModal.periodicReports.map((report: any, idx: number) => (
                       <div key={report.id} className="border border-gray-200 rounded-xl p-4 space-y-3 relative overflow-hidden">
                         <div className={`absolute top-0 left-0 w-1 h-full ${report.status === 'SUBMITTED' ? 'bg-green-500' : report.status === 'LATE' ? 'bg-amber-500' : 'bg-red-500'}`} />
                         <div className="flex justify-between items-start">
@@ -779,7 +780,7 @@ export default function AttendanceAdminPage() {
                         )}
                         {report.photos && report.photos.length > 0 ? (
                           <div className="flex gap-2 overflow-x-auto pb-1">
-                            {report.photos.map((p, i) => (
+                            {report.photos.map((p: any, i: number) => (
                               <div key={i} className="flex-shrink-0 w-24 h-24 relative rounded-lg overflow-hidden border shadow-sm cursor-pointer hover:opacity-90"
                                    onClick={() => setLightboxInfo({ url: p.photoUrl, title: `Foto Patroli Ke-${report.checkpointSequence}` })}>
                                 <img src={p.photoUrl} alt="Patrol" className="w-full h-full object-cover" />

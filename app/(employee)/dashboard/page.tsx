@@ -69,7 +69,10 @@ export default async function EmployeeDashboardPage() {
   } else if (!resolvedSchedule.isWorkDay || resolvedSchedule.isDayOff) {
     scheduleText = "Hari Libur";
   } else if (resolvedSchedule.startTime && resolvedSchedule.endTime) {
-    scheduleText = `${resolvedSchedule.startTime}-${resolvedSchedule.endTime}`;
+    const timeStr = `${resolvedSchedule.startTime}-${resolvedSchedule.endTime}`;
+    scheduleText = resolvedSchedule.scheduleType === "SHIFT" && resolvedSchedule.scheduleName 
+      ? `${resolvedSchedule.scheduleName} (${timeStr})`
+      : timeStr;
   }
 
   const settingsMap = (settings || []).reduce(
