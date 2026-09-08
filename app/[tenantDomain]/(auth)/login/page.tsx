@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Eye, EyeOff, LogIn, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const params = useParams();
+  const tenantDomain = params.tenantDomain as string;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -69,6 +71,7 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email: email.trim(),
         password,
+        tenantDomain,
         redirect: false,
       });
 

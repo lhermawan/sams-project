@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -16,8 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "attendanceId dan action wajib diisi" }, { status: 400 });
     }
 
-    const existing = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
+    const existing = await prisma.attendance.findFirst({
+      where: { id: attendanceId,
+          tenantId: session.user.tenantId
+    },
     });
     if (!existing) {
       return NextResponse.json({ error: "Data absensi tidak ditemukan" }, { status: 404 });
@@ -39,18 +41,23 @@ export async function POST(req: NextRequest) {
     const cleanedNotes = typeof adminNotes === "string" && adminNotes.trim() ? adminNotes.trim() : null;
 
     const updated = await prisma.attendance.update({
-      where: { id: attendanceId },
+      where: { id: attendanceId,
+          tenantId: session.user.tenantId
+    },
       data: {
         status: newStatus,
         adminNotes: cleanedNotes,
         validatedBy: session.user.id,
         validatedAt: new Date(),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Notify employee
-    const employee = await prisma.employee.findUnique({
-      where: { id: updated.employeeId },
+    const employee = await prisma.employee.findFirst({
+      where: { id: updated.employeeId,
+          tenantId: session.user.tenantId
+    },
       include: { user: true },
     });
 
@@ -66,6 +73,7 @@ export async function POST(req: NextRequest) {
           type: "VALIDATION_REQUEST",
           title: action === "APPROVE" ? "Absensi Disetujui" : action === "REJECT" ? "Absensi Ditolak" : "Absensi Dikoreksi",
           message: msgMap[action],
+            tenantId: session.user.tenantId
         },
       });
     }
@@ -80,7 +88,8 @@ export async function POST(req: NextRequest) {
         oldData: JSON.stringify({ status: existing.status }),
         newData: JSON.stringify({ status: newStatus, adminNotes }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, attendance: updated });

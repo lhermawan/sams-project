@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,6 +19,7 @@ export async function GET() {
         },
       },
       orderBy: { createdAt: "asc" },
+        where: { tenantId: session.user.tenantId }
     });
 
     return NextResponse.json({ success: true, data: types });
@@ -34,7 +35,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -48,8 +49,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await prisma.employeeType.findUnique({
-      where: { code: code.toUpperCase().trim() },
+    const existing = await prisma.employeeType.findFirst({
+      where: { code: code.toUpperCase().trim(),
+          tenantId: session.user.tenantId
+    },
     });
 
     if (existing) {
@@ -66,7 +69,8 @@ export async function POST(req: NextRequest) {
         description: description?.trim() || null,
         scheduleType: scheduleType === "SHIFT" ? "SHIFT" : "NON_SHIFT",
         isActive: true,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Seed default schedule structure based on type
@@ -90,7 +94,8 @@ export async function POST(req: NextRequest) {
             isWorkDay: d.isWorkDay,
             startTime: d.startTime,
             endTime: d.endTime,
-          },
+              tenantId: session.user.tenantId
+        },
         });
       }
     }
@@ -108,6 +113,7 @@ export async function POST(req: NextRequest) {
             maxLateMinutes: 60,
             actionOnExceedMax: "ALLOW_FLAG_EXCESSIVE_LATE",
           }),
+            tenantId: session.user.tenantId
         },
         {
           employeeTypeId: newType.id,
@@ -118,6 +124,7 @@ export async function POST(req: NextRequest) {
             enforceGeofence: true,
             radiusMeters: 100,
           }),
+            tenantId: session.user.tenantId
         },
       ],
     });
@@ -131,7 +138,8 @@ export async function POST(req: NextRequest) {
         entityId: newType.id,
         newData: JSON.stringify(newType),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({

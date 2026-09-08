@@ -7,13 +7,15 @@ type Params = { params: Promise<{ id: string }> };
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id } = await params;
     const body = await req.json();
     const updated = await prisma.shift.update({
-      where: { id },
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       data: {
         name: body.name,
         startTime: body.startTime,
@@ -21,7 +23,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
         isCrossDay: body.isCrossDay,
         toleranceMin: body.toleranceMin,
         isActive: body.isActive,
-      },
+          tenantId: session.user.tenantId
+    },
     });
     return NextResponse.json({ success: true, shift: updated });
   } catch {
@@ -33,12 +36,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function GET(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id } = await params;
     const assignments = await prisma.employeeShift.findMany({
-      where: { shiftId: id, isActive: true },
+      where: { shiftId: id, isActive: true,
+          tenantId: session.user.tenantId
+    },
       include: { employee: { select: { id: true, name: true, department: true, nip: true } } },
       orderBy: { effectiveFrom: "desc" },
     });

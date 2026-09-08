@@ -8,6 +8,8 @@ declare module "next-auth" {
       email: string;
       name: string;
       role: string;
+      tenantId: string;
+      tenantDomain: string | null;
       employeeId: string | null;
       department: string | null;
       photoUrl: string | null;
@@ -16,6 +18,8 @@ declare module "next-auth" {
 
   interface User {
     role: string;
+    tenantId: string;
+    tenantDomain: string | null;
     employeeId: string | null;
     department: string | null;
     photoUrl: string | null;
@@ -26,6 +30,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: string;
+    tenantId: string;
+    tenantDomain: string | null;
     employeeId: string | null;
     department: string | null;
     photoUrl: string | null;

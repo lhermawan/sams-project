@@ -13,47 +13,45 @@ import {
 import { format, startOfDay, endOfDay } from "date-fns";
 import { id } from "date-fns/locale";
 
-async function getDashboardStats() {
+async function getDashboardStats(tenantId: string) {
   const today = new Date();
   const startOfToday = startOfDay(today);
   const endOfToday = endOfDay(today);
 
-  const [
-    totalEmployees,
-    presentToday,
-    lateToday,
-    pendingValidation,
-    pendingLeave,
-  ] = await Promise.all([
-    prisma.employee.count({ where: { isActive: true } }),
-    prisma.attendance.count({
-      where: {
-        date: { gte: startOfToday, lte: endOfToday },
-        status: { in: ["VALID", "LATE"] },
-      },
-    }),
-    prisma.attendance.count({
-      where: {
-        date: { gte: startOfToday, lte: endOfToday },
-        status: "LATE",
-      },
-    }),
-    prisma.attendance.count({
-      where: { status: "PENDING" },
-    }),
-    prisma.leaveRequest.count({
-      where: { status: "PENDING" },
-    }),
-  ]);
+  const totalEmployees = await prisma.employee.count({ where: { tenantId, isActive: true } });
+  
+  const presentToday = await prisma.attendance.count({
+    where: {
+      tenantId,
+      date: { gte: startOfToday, lte: endOfToday },
+      status: { in: ["VALID", "LATE"] },
+    },
+  });
+  
+  const lateToday = await prisma.attendance.count({
+    where: {
+      tenantId,
+      date: { gte: startOfToday, lte: endOfToday },
+      status: "LATE",
+    },
+  });
+  
+  const pendingValidation = await prisma.attendance.count({
+    where: { tenantId, status: "PENDING" },
+  });
+  
+  const pendingLeave = await prisma.leaveRequest.count({
+    where: { tenantId, status: "PENDING" },
+  });
 
   const absentToday = totalEmployees - presentToday;
 
   return { totalEmployees, presentToday, lateToday, absentToday, pendingValidation, pendingLeave };
 }
 
-async function getRecentAttendance() {
+async function getRecentAttendance(tenantId: string) {
   return prisma.attendance.findMany({
-    where: { date: { gte: startOfDay(new Date()) } },
+    where: { tenantId, date: { gte: startOfDay(new Date()) } },
     include: { employee: true },
     orderBy: { checkInTime: "desc" },
     take: 10,
@@ -62,8 +60,9 @@ async function getRecentAttendance() {
 
 export default async function AdminDashboardPage() {
   const session = await auth();
-  const stats = await getDashboardStats();
-  const recentAttendance = await getRecentAttendance();
+  const tenantId = session?.user?.tenantId as string;
+  const stats = await getDashboardStats(tenantId);
+  const recentAttendance = await getRecentAttendance(tenantId);
   const todayStr = format(new Date(), "EEEE, dd MMMM yyyy", { locale: id });
 
   const statCards = [

@@ -12,15 +12,17 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.tenantId || !session.user.employeeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const { latitude, longitude, notes, photos } = await req.json();
 
-    const report = await prisma.periodicReport.findUnique({
-      where: { id },
+    const report = await prisma.periodicReport.findFirst({
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       include: {
         attendance: {
           include: {
@@ -75,7 +77,9 @@ export async function POST(
 
     // Check distance if office location is configured
     let distanceMeters = 0;
-    const office = await prisma.officeLocation.findFirst({ where: { isActive: true } });
+    const office = await prisma.officeLocation.findFirst({ where: { isActive: true,
+        tenantId: session.user.tenantId
+    } });
     if (office && latitude && longitude) {
       const val = isWithinRadius(latitude, longitude, office.latitude, office.longitude, office.radius);
       distanceMeters = val.distance;
@@ -120,7 +124,9 @@ export async function POST(
     const newStatus = isLate ? "LATE" : "SUBMITTED";
 
     const updated = await prisma.periodicReport.update({
-      where: { id: report.id },
+      where: { id: report.id,
+          tenantId: session.user.tenantId
+    },
       data: {
         submittedAt: now,
         latitude: latitude || null,
@@ -136,7 +142,8 @@ export async function POST(
             mimeType: "image/jpeg",
           })),
         },
-      },
+          tenantId: session.user.tenantId
+    },
       include: {
         photos: true,
       },
@@ -156,7 +163,8 @@ export async function POST(
           submittedAt: now,
         }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({

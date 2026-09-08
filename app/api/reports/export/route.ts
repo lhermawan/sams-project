@@ -14,7 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
   CORRECTED: "Dikoreksi",
 };
 
-async function getReportData(searchParams: URLSearchParams) {
+async function getReportData(searchParams: URLSearchParams, session: any) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
   const department = searchParams.get("department") ?? "";
@@ -38,8 +38,10 @@ async function getReportData(searchParams: URLSearchParams) {
 
   let targetEmployee: { name: string; nip: string; department: string } | null = null;
   if (employeeId) {
-    targetEmployee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+    targetEmployee = await prisma.employee.findFirst({
+      where: { id: employeeId,
+          tenantId: session.user.tenantId
+    },
       select: { name: true, nip: true, department: true },
     });
   }
@@ -48,11 +50,13 @@ async function getReportData(searchParams: URLSearchParams) {
 }
 
 export async function GET(req: NextRequest) {
-  try {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+try {
     const { searchParams } = new URL(req.url);
     const exportType = searchParams.get("type") ?? "excel";
     const now = new Date();
-    const { records, dateFrom, dateTo, targetEmployee, department } = await getReportData(searchParams);
+    const { records, dateFrom, dateTo, targetEmployee, department } = await getReportData(searchParams, session);
 
     const periodLabel = `${format(dateFrom, "dd MMM yyyy", { locale: id })} – ${format(dateTo, "dd MMM yyyy", { locale: id })}`;
 

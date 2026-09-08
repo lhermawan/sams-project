@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,8 +19,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Action tidak valid" }, { status: 400 });
     }
 
-    const existing = await prisma.leaveRequest.findUnique({
-      where: { id: leaveId },
+    const existing = await prisma.leaveRequest.findFirst({
+      where: { id: leaveId,
+          tenantId: session.user.tenantId
+    },
       include: {
         employee: {
           include: { user: true },
@@ -44,13 +46,16 @@ export async function POST(req: NextRequest) {
     const cleanedNotes = typeof adminNotes === "string" && adminNotes.trim() ? adminNotes.trim() : null;
 
     const updated = await prisma.leaveRequest.update({
-      where: { id: leaveId },
+      where: { id: leaveId,
+          tenantId: session.user.tenantId
+    },
       data: {
         status: newStatus,
         adminNotes: cleanedNotes,
         approvedBy: session.user.id,
         approvedAt: new Date(),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Audit log
@@ -63,7 +68,8 @@ export async function POST(req: NextRequest) {
         oldData: JSON.stringify({ status: existing.status }),
         newData: JSON.stringify({ status: newStatus, adminNotes: cleanedNotes }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Notifikasi ke pegawai
@@ -81,6 +87,7 @@ export async function POST(req: NextRequest) {
           type: "LEAVE_STATUS",
           title,
           message,
+            tenantId: session.user.tenantId
         },
       });
     }

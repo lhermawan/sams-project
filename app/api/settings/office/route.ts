@@ -1,10 +1,16 @@
+import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+
   try {
     const location = await prisma.officeLocation.findFirst({
-      where: { isActive: true },
+      where: { isActive: true,
+          tenantId: session.user.tenantId
+    },
     });
 
     if (!location) {

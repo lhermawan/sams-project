@@ -16,7 +16,10 @@ async function getEmployees(searchParams: SearchParams) {
   const search = searchParams.search ?? "";
   const department = searchParams.department ?? "";
 
-  const where: any = {};
+const session = await auth();
+  const tenantId = session?.user?.tenantId;
+
+  const where: any = { tenantId };
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
@@ -25,16 +28,15 @@ async function getEmployees(searchParams: SearchParams) {
   }
   if (department) where.department = department;
 
-  const [employees, total] = await Promise.all([
-    prisma.employee.findMany({
-      where,
-      include: { user: { select: { email: true, isActive: true } }, employeeType: { select: { id: true, code: true, name: true } } },
-      orderBy: { name: "asc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.employee.count({ where }),
-  ]);
+  const employees = await prisma.employee.findMany({
+    where,
+    include: { user: { select: { email: true, isActive: true } }, employeeType: { select: { id: true, code: true, name: true } } },
+    orderBy: { name: "asc" },
+    skip: (page - 1) * limit,
+    take: limit,
+  });
+  
+  const total = await prisma.employee.count({ where });
 
   return { employees, total, page, limit };
 }

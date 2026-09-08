@@ -65,6 +65,7 @@ export class PeriodicReportGenerator {
 
       await prisma.periodicReport.create({
         data: {
+          tenantId: attendance.tenantId,
           attendanceId: attendance.id,
           employeeId: attendance.employeeId,
           checkpointSequence: i,

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { employeeId, shiftId, effectiveFrom } = await req.json();
@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
         shiftId,
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : new Date(),
         isActive: true,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, assignment }, { status: 201 });
@@ -39,13 +40,17 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { assignmentId } = await req.json();
     await prisma.employeeShift.update({
-      where: { id: assignmentId },
-      data: { isActive: false, effectiveTo: new Date() },
+      where: { id: assignmentId,
+          tenantId: session.user.tenantId
+    },
+      data: { isActive: false, effectiveTo: new Date(),
+          tenantId: session.user.tenantId
+    },
     });
     return NextResponse.json({ success: true });
   } catch {

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.tenantId || !session.user.employeeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
       notes,
     } = await req.json();
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: session.user.employeeId },
+    const employee = await prisma.employee.findFirst({
+      where: { id: session.user.employeeId, tenantId: session.user.tenantId },
       include: { employeeType: true },
     });
 
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       where: {
         employeeId: employee.id,
         workDate: sessionInfo.workDate,
+        tenantId: session.user.tenantId,
       },
     });
 
@@ -175,14 +176,15 @@ export async function POST(req: NextRequest) {
         lateMinutes,
         status: finalStatus,
         notes: statusNote,
+        tenantId: session.user.tenantId,
       },
     });
 
     // 7. Link Handover to Attendance if provided
     if (handoverId) {
       await prisma.attendanceHandover.update({
-        where: { id: handoverId },
-        data: { attendanceId: attendance.id },
+        where: { id: handoverId, tenantId: session.user.tenantId },
+        data: { attendanceId: attendance.id, tenantId: session.user.tenantId },
       }).catch(() => {});
     }
 
@@ -207,6 +209,7 @@ export async function POST(req: NextRequest) {
           periodicReportsCreated: scheduledReportsCount,
         }),
         ipAddress: ip,
+        tenantId: session.user.tenantId,
       },
     });
 
@@ -218,6 +221,7 @@ export async function POST(req: NextRequest) {
         message: isLate
           ? `Absen masuk dicatat pada ${now.toLocaleTimeString("id-ID")} WIB (Terlambat ${lateMinutes} menit).`
           : `Absen masuk berhasil dicatat pada ${now.toLocaleTimeString("id-ID")} WIB. Selamat bertugas!`,
+        tenantId: session.user.tenantId,
       },
     });
 

@@ -7,7 +7,7 @@ import { formatTime } from "@/lib/utils";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const deptParam = searchParams.get("department");
     const employeeIdParam = searchParams.get("employeeId");
 
-    const where: any = {};
+    const where: any = { tenantId: session.user.tenantId };
 
     if (dateParam) {
       const d = new Date(dateParam);
@@ -55,10 +55,11 @@ export async function GET(req: NextRequest) {
       prisma.attendance.count({ where }),
       prisma.employee.findMany({
         select: { department: true },
-        where: { department: { not: "" } },
+        where: { department: { not: "" }, tenantId: session.user.tenantId },
         distinct: ["department"],
       }),
       prisma.employee.findMany({
+        where: { tenantId: session.user.tenantId },
         select: { id: true, name: true, nip: true, department: true },
         orderBy: { name: "asc" },
       }),

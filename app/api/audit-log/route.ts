@@ -6,7 +6,7 @@ import { startOfDay, endOfDay } from "date-fns";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -135,7 +135,9 @@ export async function GET(req: NextRequest) {
       }),
       prisma.auditLog.count({ where }),
       prisma.auditLog.count({
-        where: { createdAt: { gte: todayStart, lte: todayEnd } },
+        where: { createdAt: { gte: todayStart, lte: todayEnd },
+            tenantId: session.user.tenantId
+        },
       }),
       prisma.auditLog.count({
         where: {
@@ -150,6 +152,7 @@ export async function GET(req: NextRequest) {
               "REJECT_LEAVE_REQUEST",
             ],
           },
+            tenantId: session.user.tenantId
         },
       }),
       prisma.auditLog.count({
@@ -164,15 +167,19 @@ export async function GET(req: NextRequest) {
               "RESET_PASSWORD",
             ],
           },
+            tenantId: session.user.tenantId
         },
       }),
       prisma.auditLog.findMany({
         select: { action: true },
         distinct: ["action"],
-      }),
+          where: { tenantId: session.user.tenantId }
+    }),
       prisma.auditLog.findMany({
         select: { entity: true },
-        where: { entity: { not: null } },
+        where: { entity: { not: null },
+            tenantId: session.user.tenantId
+        },
         distinct: ["entity"],
       }),
       prisma.user.findMany({
@@ -183,7 +190,8 @@ export async function GET(req: NextRequest) {
           employee: { select: { name: true } },
         },
         orderBy: { email: "asc" },
-      }),
+          where: { tenantId: session.user.tenantId }
+    }),
     ]);
 
     return NextResponse.json({

@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.employeeId || !session?.user?.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: session.user.employeeId },
+    const employee = await prisma.employee.findFirst({
+      where: { id: session.user.employeeId, tenantId: session.user.tenantId },
       include: {
         employeeType: {
           include: {
@@ -45,6 +45,7 @@ export async function GET() {
       where: {
         employeeId: employee.id,
         checkOutTime: null,
+        tenantId: session.user.tenantId,
       },
       include: {
         shift: true,
@@ -62,6 +63,7 @@ export async function GET() {
         where: {
           employeeId: employee.id,
           workDate: today,
+          tenantId: session.user.tenantId,
         },
         include: {
           shift: true,
@@ -96,6 +98,7 @@ export async function GET() {
           employeeId: employee.id,
           attendanceId: null,
           status: "COMPLETED",
+          tenantId: session.user.tenantId,
         },
         include: { photos: true },
         orderBy: { createdAt: "desc" },

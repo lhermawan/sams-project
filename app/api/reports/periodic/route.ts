@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.tenantId || !session.user.employeeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -16,7 +16,8 @@ export async function GET() {
       where: {
         employeeId: session.user.employeeId,
         checkOutTime: null,
-      },
+          tenantId: session.user.tenantId
+    },
       orderBy: { checkInTime: "desc" },
     });
 
@@ -27,7 +28,8 @@ export async function GET() {
     const reports = await prisma.periodicReport.findMany({
       where: {
         attendanceId: activeAttendance.id,
-      },
+          tenantId: session.user.tenantId
+    },
       include: {
         photos: true,
       },

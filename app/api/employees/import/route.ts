@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -62,29 +62,34 @@ export async function POST(req: NextRequest) {
           }
 
           // Check if employee with NIP already exists
-          const existingEmployee = await prisma.employee.findUnique({
-            where: { nip },
+          const existingEmployee = await prisma.employee.findFirst({
+            where: { nip,
+                tenantId: session.user.tenantId
+            },
             include: { user: true },
           });
 
           if (existingEmployee) {
             // Update existing employee data
             await prisma.employee.update({
-              where: { nip },
+              where: { tenantId_nip: { tenantId: session.user.tenantId, nip } },
               data: {
                 name,
                 department,
                 position,
                 phone: phone || existingEmployee.phone,
                 address: address || existingEmployee.address,
-              },
+                  tenantId: session.user.tenantId
+            },
             });
             updatedCount++;
           } else {
             // Check email uniqueness
             let finalEmail = email;
-            const existingUser = await prisma.user.findUnique({
-              where: { email: finalEmail },
+            const existingUser = await prisma.user.findFirst({
+              where: { email: finalEmail,
+                  tenantId: session.user.tenantId
+            },
             });
             if (existingUser) {
               const [local, dom] = email.includes("@") ? email.split("@") : [email, "sams.id"];
@@ -106,9 +111,11 @@ export async function POST(req: NextRequest) {
                     phone: phone || null,
                     address: address || null,
                     isActive: true,
+                    tenantId: session.user.tenantId,
                   },
                 },
-              },
+                  tenantId: session.user.tenantId
+            },
             });
             insertedCount++;
           }
@@ -129,6 +136,7 @@ export async function POST(req: NextRequest) {
           entityId: "bulk",
           newData: JSON.stringify({ insertedCount, updatedCount, total: employees.length }),
           ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+            tenantId: session.user.tenantId
         },
       });
     } catch {}

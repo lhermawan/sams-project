@@ -8,13 +8,15 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const type = await prisma.employeeType.findUnique({
-      where: { id },
+    const type = await prisma.employeeType.findFirst({
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       include: {
         shifts: true,
         workSchedules: { orderBy: { dayOfWeek: "asc" } },
@@ -39,7 +41,7 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -47,19 +49,24 @@ export async function PUT(
     const body = await req.json();
     const { name, description, scheduleType, isActive } = body;
 
-    const oldType = await prisma.employeeType.findUnique({ where: { id } });
+    const oldType = await prisma.employeeType.findFirst({ where: { id,
+        tenantId: session.user.tenantId
+    } });
     if (!oldType) {
       return NextResponse.json({ error: "Jenis pegawai tidak ditemukan" }, { status: 404 });
     }
 
     const updated = await prisma.employeeType.update({
-      where: { id },
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       data: {
         name: name ? name.trim() : oldType.name,
         description: description !== undefined ? description : oldType.description,
         scheduleType: scheduleType || oldType.scheduleType,
         isActive: isActive !== undefined ? isActive : oldType.isActive,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Audit Log
@@ -72,7 +79,8 @@ export async function PUT(
         oldData: JSON.stringify(oldType),
         newData: JSON.stringify(updated),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({
@@ -91,7 +99,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -104,16 +112,18 @@ export async function PATCH(
       const { ruleType, configuration, isActive, executionStage, priority } = payload;
       const rule = await prisma.attendanceRule.upsert({
         where: {
-          employeeTypeId_ruleType: {
+          tenantId_employeeTypeId_ruleType: { tenantId: session.user.tenantId,
             employeeTypeId: id,
             ruleType,
           },
+            tenantId: session.user.tenantId
         },
         update: {
           configuration: typeof configuration === "object" ? JSON.stringify(configuration) : configuration,
           isActive: isActive !== undefined ? isActive : true,
           executionStage: executionStage || "CHECK_IN",
           priority: priority ?? 0,
+            tenantId: session.user.tenantId
         },
         create: {
           employeeTypeId: id,
@@ -122,6 +132,7 @@ export async function PATCH(
           priority: priority ?? 0,
           configuration: typeof configuration === "object" ? JSON.stringify(configuration) : configuration,
           isActive: isActive !== undefined ? isActive : true,
+            tenantId: session.user.tenantId
         },
       });
 
@@ -134,7 +145,9 @@ export async function PATCH(
       let shift;
       if (shiftId) {
         shift = await prisma.shift.update({
-          where: { id: shiftId },
+          where: { id: shiftId,
+              tenantId: session.user.tenantId
+        },
           data: {
             code,
             name,
@@ -144,7 +157,8 @@ export async function PATCH(
             is24Hours: !!is24Hours,
             durationMinutes: durationMinutes ?? 720,
             toleranceMin: toleranceMin ?? 15,
-          },
+              tenantId: session.user.tenantId
+        },
         });
       } else {
         shift = await prisma.shift.create({
@@ -158,7 +172,8 @@ export async function PATCH(
             is24Hours: !!is24Hours,
             durationMinutes: durationMinutes ?? 720,
             toleranceMin: toleranceMin ?? 15,
-          },
+              tenantId: session.user.tenantId
+        },
         });
       }
       return NextResponse.json({ success: true, message: "Shift berhasil disimpan.", data: shift });
@@ -170,11 +185,14 @@ export async function PATCH(
       for (const item of schedules) {
         if (item.id) {
           await prisma.workSchedule.update({
-            where: { id: item.id },
+            where: { id: item.id,
+                tenantId: session.user.tenantId
+            },
             data: {
               isWorkDay: item.isWorkDay,
               startTime: item.startTime,
               endTime: item.endTime,
+                tenantId: session.user.tenantId
             },
           });
         }
@@ -194,14 +212,16 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
 
     const count = await prisma.employee.count({
-      where: { employeeTypeId: id },
+      where: { employeeTypeId: id,
+          tenantId: session.user.tenantId
+    },
     });
 
     if (count > 0) {
@@ -212,7 +232,9 @@ export async function DELETE(
     }
 
     await prisma.employeeType.delete({
-      where: { id },
+      where: { id,
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, message: "Jenis pegawai berhasil dihapus." });

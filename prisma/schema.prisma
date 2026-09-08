@@ -11,13 +11,51 @@ datasource db {
   directUrl = env("POSTGRES_URL")
 }
 
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  subdomain String   @unique
+  name      String
+  domain    String?  @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users            User[]
+  employees        Employee[]
+  employeeTypes    EmployeeType[]
+  shifts           Shift[]
+  attendances      Attendance[]
+  officeLocations  OfficeLocation[]
+  workSchedules    WorkSchedule[]
+  holidays         Holiday[]
+  rules            AttendanceRule[]
+  systemSettings   SystemSetting[]
+  leaveRequests    LeaveRequest[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  employeeShifts   EmployeeShift[]
+  rosters          EmployeeShiftRoster[]
+  handovers        AttendanceHandover[]
+  periodicReports  PeriodicReport[]
+
+  @@map("tenants")
+}
+
 // ─── Auth & Identity ─────────────────────────────────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email     String   
   password  String
-  role      String   @default("EMPLOYEE")
+  role      Role     @default(EMPLOYEE)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -26,6 +64,7 @@ model User {
   auditLogsBy   AuditLog[]     @relation("AuditLogsBy")
   notifications Notification[]
 
+  @@unique([tenantId, email])
   @@map("users")
 }
 
@@ -33,7 +72,9 @@ model User {
 
 model EmployeeType {
   id           String   @id @default(cuid())
-  code         String   @unique
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code         String   
   name         String
   description  String?
   scheduleType String   @default("NON_SHIFT") // "SHIFT" or "NON_SHIFT"
@@ -47,6 +88,7 @@ model EmployeeType {
   rules         AttendanceRule[]
   attendances   Attendance[]
 
+  @@unique([tenantId, code])
   @@map("employee_types")
 }
 
@@ -54,7 +96,9 @@ model EmployeeType {
 
 model Employee {
   id             String        @id @default(cuid())
-  nip            String        @unique
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nip            String        
   name           String
   department     String
   position       String
@@ -80,6 +124,7 @@ model Employee {
   periodicReports PeriodicReport[]
   ruleLogs        AttendanceRuleLog[]
 
+  @@unique([tenantId, nip])
   @@map("employees")
 }
 
@@ -87,6 +132,8 @@ model Employee {
 
 model OfficeLocation {
   id        String  @id @default(cuid())
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   address   String?
   latitude  Float
@@ -104,6 +151,8 @@ model OfficeLocation {
 
 model WorkSchedule {
   id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeTypeId String?
   employeeType   EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
   name           String
@@ -126,6 +175,8 @@ model WorkSchedule {
 
 model Holiday {
   id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   date        DateTime
   description String?
@@ -138,10 +189,12 @@ model Holiday {
 
 model Shift {
   id                    String        @id @default(cuid())
+  tenantId              String
+  tenant                Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeTypeId        String?
   employeeType          EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
   name                  String
-  code                  String        @unique
+  code                  String        
   startTime             String
   endTime               String
   isCrossDay            Boolean       @default(false)
@@ -159,11 +212,14 @@ model Shift {
   rosters               EmployeeShiftRoster[]
   attendances           Attendance[]
 
+  @@unique([tenantId, code])
   @@map("shifts")
 }
 
 model EmployeeShift {
   id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId    String
   shiftId       String
   effectiveFrom DateTime
@@ -179,6 +235,8 @@ model EmployeeShift {
 
 model EmployeeShiftRoster {
   id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId String
   shiftId    String?
   rosterDate DateTime
@@ -198,6 +256,8 @@ model EmployeeShiftRoster {
 
 model AttendanceRule {
   id             String       @id @default(cuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeTypeId String
   ruleType       String       // "HANDOVER", "PERIODIC_REPORT", "LOCATION", "LATE_TOLERANCE", etc.
   executionStage String       // "PRE_CHECK_IN", "CHECK_IN", "IN_SHIFT", "PRE_CHECK_OUT", "CHECK_OUT"
@@ -209,7 +269,7 @@ model AttendanceRule {
 
   employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
 
-  @@unique([employeeTypeId, ruleType])
+  @@unique([tenantId, employeeTypeId, ruleType])
   @@map("attendance_rules")
 }
 
@@ -217,6 +277,8 @@ model AttendanceRule {
 
 model Attendance {
   id               String               @id @default(cuid())
+  tenantId         String
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId       String
   employeeTypeId   String?
   shiftId          String?
@@ -258,6 +320,8 @@ model Attendance {
 
 model AttendanceHandover {
   id             String                    @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   attendanceId   String?                   @unique
   employeeId     String
   handedOverById String?
@@ -291,6 +355,8 @@ model AttendanceHandoverPhoto {
 
 model PeriodicReport {
   id                 String                @id @default(cuid())
+  tenantId           String
+  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   attendanceId       String
   employeeId         String
   checkpointSequence Int
@@ -350,6 +416,8 @@ model AttendanceRuleLog {
 
 model LeaveRequest {
   id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId    String
   startDate     DateTime
   endDate       DateTime
@@ -372,6 +440,8 @@ model LeaveRequest {
 
 model Notification {
   id        String           @id @default(cuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   type      String
   title     String
@@ -389,6 +459,8 @@ model Notification {
 
 model AuditLog {
   id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   action    String
   entity    String?
@@ -408,9 +480,12 @@ model AuditLog {
 
 model SystemSetting {
   id        String   @id @default(cuid())
-  key       String   @unique
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key       String   
   value     String
   updatedAt DateTime @updatedAt
 
+  @@unique([tenantId, key])
   @@map("system_settings")
 }

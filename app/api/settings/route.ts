@@ -7,12 +7,12 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = await auth();
-    const settings = await prisma.systemSetting.findMany();
+    const settings = await prisma.systemSetting.findMany({ where: { tenantId: session!.user.tenantId } });
     const map: Record<string, string> = {};
     for (const s of settings) map[s.key] = s.value;
 
     if (!map.admin_name && session?.user?.name) {
-      map.admin_name = session.user.name;
+      map.admin_name = session!.user.name;
     }
     return NextResponse.json(map, {
       headers: {
@@ -33,9 +33,13 @@ export async function PUT(req: NextRequest) {
 
     const updates = Object.entries(body).map(([key, value]) =>
       prisma.systemSetting.upsert({
-        where: { key },
-        update: { value: String(value ?? "") },
-        create: { key, value: String(value ?? "") },
+        where: { tenantId_key: { tenantId: session!.user.tenantId, key } },
+        update: { value: String(value ?? ""),
+            tenantId: session!.user.tenantId
+        },
+        create: { key, value: String(value ?? ""),
+            tenantId: session!.user.tenantId
+        },
       })
     );
 
@@ -57,8 +61,10 @@ export async function PUT(req: NextRequest) {
 
     try {
       const adminUser = session?.user?.id 
-        ? session.user.id 
-        : (await prisma.user.findFirst({ where: { role: "ADMIN" } }))?.id;
+        ? session!.user.id 
+        : (await prisma.user.findFirst({ where: { role: "ADMIN",
+            tenantId: session!.user.tenantId
+        } }))?.id;
 
       if (adminUser) {
         await prisma.auditLog.create({
@@ -67,7 +73,8 @@ export async function PUT(req: NextRequest) {
             action: "UPDATE_SETTINGS",
             entity: "SystemSetting",
             newData: JSON.stringify(body),
-          },
+              tenantId: session!.user.tenantId
+        },
         });
       }
     } catch {}

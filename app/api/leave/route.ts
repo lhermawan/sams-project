@@ -6,7 +6,7 @@ import { startOfDay, endOfDay } from "date-fns";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const searchParam = searchParams.get("search");
 
     const isAdmin = session.user.role === "ADMIN";
-    const where: any = {};
+    const where: any = { tenantId: session.user.tenantId };
 
     if (!isAdmin) {
       if (!session.user.employeeId) {
@@ -106,20 +106,30 @@ export async function GET(req: NextRequest) {
       }),
       prisma.leaveRequest.count({ where }),
       prisma.leaveRequest.count({ where: baseWhereForStats }),
-      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "PENDING" } }),
-      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "APPROVED" } }),
-      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "REJECTED" } }),
+      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "PENDING",
+          tenantId: session.user.tenantId
+    } }),
+      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "APPROVED",
+          tenantId: session.user.tenantId
+    } }),
+      prisma.leaveRequest.count({ where: { ...baseWhereForStats, status: "REJECTED",
+          tenantId: session.user.tenantId
+    } }),
       isAdmin
         ? prisma.employee.findMany({
             select: { department: true },
-            where: { department: { not: "" } },
+            where: { department: { not: "" },
+                tenantId: session.user.tenantId
+            },
             distinct: ["department"],
           })
         : Promise.resolve([]),
       isAdmin
         ? prisma.employee.findMany({
             select: { id: true, name: true, nip: true, department: true },
-            where: { isActive: true },
+            where: { isActive: true,
+                tenantId: session.user.tenantId
+            },
             orderBy: { name: "asc" },
           })
         : Promise.resolve([]),
@@ -152,7 +162,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.tenantId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -191,8 +201,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+    const employee = await prisma.employee.findFirst({
+      where: { id: employeeId,
+          tenantId: session.user.tenantId
+    },
       include: { user: true },
     });
 
@@ -209,7 +221,8 @@ export async function POST(req: NextRequest) {
         reason: reason.trim(),
         attachmentUrl: attachmentUrl || null,
         status: "PENDING",
-      },
+          tenantId: session.user.tenantId
+    },
       include: {
         employee: {
           select: {
@@ -237,18 +250,22 @@ export async function POST(req: NextRequest) {
           reason,
         }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // Notifikasi
     if (!isAdmin) {
       const admins = await prisma.user.findMany({
-        where: { role: "ADMIN", isActive: true },
+        where: { role: "ADMIN", isActive: true,
+            tenantId: session.user.tenantId
+        },
         select: { id: true },
       });
       if (admins.length > 0) {
         await prisma.notification.createMany({
           data: admins.map((admin) => ({
+            tenantId: session.user.tenantId,
             userId: admin.id,
             type: "LEAVE_REQUEST",
             title: "Pengajuan Izin/Cuti Baru",
@@ -263,6 +280,7 @@ export async function POST(req: NextRequest) {
           type: "LEAVE_REQUEST",
           title: "Pengajuan Izin/Cuti Didaftarkan",
           message: "Pengajuan " + leaveType + " Anda telah didaftarkan oleh admin untuk periode " + start.toLocaleDateString("id-ID") + " s.d " + end.toLocaleDateString("id-ID"),
+            tenantId: session.user.tenantId
         },
       });
     }

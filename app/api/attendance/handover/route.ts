@@ -7,7 +7,7 @@ import { join } from "path";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.tenantId || !session.user.employeeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
             mimeType: "image/jpeg",
           })),
         },
-      },
+          tenantId: session.user.tenantId
+    },
       include: {
         photos: true,
       },
@@ -87,7 +88,8 @@ export async function POST(req: NextRequest) {
           photoCount: handover.photos.length,
         }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({

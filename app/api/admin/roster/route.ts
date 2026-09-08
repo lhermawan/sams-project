@@ -5,7 +5,7 @@ import { startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const employees = await prisma.employee.findMany({
-      where: { employeeTypeId, isActive: true },
+      where: { employeeTypeId, isActive: true, tenantId: session.user.tenantId },
       select: { id: true, name: true, nip: true },
       orderBy: { name: 'asc' }
     });
@@ -32,12 +32,13 @@ export async function GET(req: NextRequest) {
       where: {
         employeeId: { in: employees.map((e) => e.id) },
         rosterDate: { gte: startDate, lte: endDate },
+        tenantId: session.user.tenantId,
       },
       include: { shift: true },
     });
 
     const shifts = await prisma.shift.findMany({
-      where: { employeeTypeId, isActive: true },
+      where: { employeeTypeId, isActive: true, tenantId: session.user.tenantId },
       orderBy: { startTime: 'asc' }
     });
 
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -66,12 +67,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const employees = await prisma.employee.findMany({
-      where: { employeeTypeId, isActive: true },
+      where: { employeeTypeId, isActive: true, tenantId: session.user.tenantId },
       orderBy: { name: 'asc' }
     });
 
     const shifts = await prisma.shift.findMany({
-      where: { employeeTypeId, isActive: true },
+      where: { employeeTypeId, isActive: true, tenantId: session.user.tenantId },
       orderBy: { startTime: 'asc' }
     });
 
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
         where: {
           employeeId: { in: employees.map((e) => e.id) },
           rosterDate: { gte: startDate, lte: endDate },
+          tenantId: session.user.tenantId,
         },
       });
 
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
         for (const day of days) {
           if (forceOffNext) {
             rosterData.push({
+              tenantId: session.user.tenantId,
               employeeId: emp.id,
               rosterDate: day,
               shiftId: null,
@@ -115,6 +118,7 @@ export async function POST(req: NextRequest) {
           // Jika ada banyak shift (misal Pagi, Siang, Malam), kerja 3 hari lalu libur 1 hari
           if (daysSinceOff >= shifts.length && shifts.length > 1) {
             rosterData.push({
+              tenantId: session.user.tenantId,
               employeeId: emp.id,
               rosterDate: day,
               shiftId: null,
@@ -126,6 +130,7 @@ export async function POST(req: NextRequest) {
           } else if (shifts.length === 1 && daysSinceOff >= 6) {
             // Jika hanya ada 1 shift non-24 jam, libur setiap 7 hari
             rosterData.push({
+              tenantId: session.user.tenantId,
               employeeId: emp.id,
               rosterDate: day,
               shiftId: null,
@@ -138,6 +143,7 @@ export async function POST(req: NextRequest) {
 
           const shift = shifts[shiftIndex];
           rosterData.push({
+            tenantId: session.user.tenantId,
             employeeId: emp.id,
             rosterDate: day,
             shiftId: shift.id,
@@ -167,7 +173,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -180,14 +186,17 @@ export async function PUT(req: NextRequest) {
         employeeId_rosterDate: {
           employeeId,
           rosterDate: new Date(rosterDate)
-        }
-      },
+        },
+          tenantId: session.user.tenantId
+    },
       update: {
         shiftId,
         isDayOff,
-        notes: isDayOff ? "Manual Edit (Libur)" : "Manual Edit"
+        notes: isDayOff ? "Manual Edit (Libur)" : "Manual Edit",
+        tenantId: session.user.tenantId
       },
       create: {
+        tenantId: session.user.tenantId,
         employeeId,
         rosterDate: new Date(rosterDate),
         shiftId,
@@ -201,3 +210,4 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

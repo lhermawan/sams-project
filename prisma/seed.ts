@@ -6,21 +6,50 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Starting seed...");
 
-  // 1. Admin User
+  // 1. SUPER ADMIN (No Tenant)
+  // Wait, User model requires tenantId! So the super admin MUST belong to a tenant, or we create a dummy "SYSTEM" tenant.
+  const sysTenant = await prisma.tenant.upsert({
+    where: { subdomain: "app" },
+    update: {},
+    create: { subdomain: "app", name: "System Admin", domain: "app.niskala.id", isActive: true },
+  });
+
+  const superAdminPassword = await bcrypt.hash("Super@123", 12);
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: sysTenant.id, email: "super@niskala.id" } },
+    update: {},
+    create: { tenantId: sysTenant.id, email: "super@niskala.id", password: superAdminPassword, role: "SUPER_ADMIN", isActive: true },
+  });
+  console.log("Super Admin created: super@niskala.id");
+
+  // 2. Sample Tenants (MBG & DWP)
+  const tenantMbg = await prisma.tenant.upsert({
+    where: { subdomain: "mbg" },
+    update: {},
+    create: { subdomain: "mbg", name: "PT. MBG Niskala", isActive: true },
+  });
+
+  const tenantDwp = await prisma.tenant.upsert({
+    where: { subdomain: "dwp" },
+    update: {},
+    create: { subdomain: "dwp", name: "PT. DWP Niskala", isActive: true },
+  });
+  console.log("Tenants seeded (mbg, dwp)");
+
+  // 3. Admin User for MBG
   const adminPassword = await bcrypt.hash("Admin@123", 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@sams.id" },
+    where: { tenantId_email: { tenantId: tenantMbg.id, email: "admin@mbg.id" } },
     update: {},
-    create: { email: "admin@sams.id", password: adminPassword, role: "ADMIN", isActive: true },
+    create: { tenantId: tenantMbg.id, email: "admin@mbg.id", password: adminPassword, role: "ADMIN", isActive: true },
   });
-  console.log("Admin created:", admin.email);
+  console.log("MBG Admin created: admin@mbg.id");
 
-  // 2. Employee Types & Rules
-  // KANTOR
+  // 4. Employee Types & Rules (MBG)
   const typeKantor = await prisma.employeeType.upsert({
-    where: { code: "KANTOR" },
+    where: { tenantId_code: { tenantId: tenantMbg.id, code: "KANTOR" } },
     update: {},
-    create: { code: "KANTOR", name: "Pegawai Kantor (Non-Shift)", description: "Jadwal kerja tetap Senin - Jumat", scheduleType: "NON_SHIFT", isActive: true },
+    create: { tenantId: tenantMbg.id, code: "KANTOR", name: "Pegawai Kantor (Non-Shift)", description: "Jadwal kerja tetap", scheduleType: "NON_SHIFT", isActive: true },
   });
   const days = [
     { dayOfWeek: 1, name: "Senin", isWorkDay: true }, { dayOfWeek: 2, name: "Selasa", isWorkDay: true },
@@ -29,24 +58,16 @@ async function main() {
     { dayOfWeek: 7, name: "Minggu", isWorkDay: false },
   ];
   for (const day of days) {
-    await prisma.workSchedule.upsert({
-      where: { id: `schedule-kantor-${day.dayOfWeek}` },
-      update: {},
-      create: { id: `schedule-kantor-${day.dayOfWeek}`, employeeTypeId: typeKantor.id, name: "Jadwal " + day.name, dayOfWeek: day.dayOfWeek, isWorkDay: day.isWorkDay, startTime: day.isWorkDay ? "08:00" : null, endTime: day.isWorkDay ? "17:00" : null }
+    await prisma.workSchedule.create({
+      data: { tenantId: tenantMbg.id, employeeTypeId: typeKantor.id, name: "Jadwal " + day.name, dayOfWeek: day.dayOfWeek, isWorkDay: day.isWorkDay, startTime: day.isWorkDay ? "08:00" : null, endTime: day.isWorkDay ? "17:00" : null }
     });
   }
-  await prisma.attendanceRule.upsert({
-    where: { id: "rule-late-kantor" },
-    update: {},
-    create: { id: "rule-late-kantor", employeeTypeId: typeKantor.id, ruleType: "LATE_TOLERANCE", executionStage: "CHECK_IN", priority: 1, configuration: JSON.stringify({ gracePeriodMinutes: 15, maxLateMinutes: 60, actionOnExceedMax: "ALLOW_FLAG_EXCESSIVE_LATE" }) }
-  });
-  console.log("KANTOR type seeded");
 
   // SATPAM
   const typeSatpam = await prisma.employeeType.upsert({
-    where: { code: "SATPAM" },
+    where: { tenantId_code: { tenantId: tenantMbg.id, code: "SATPAM" } },
     update: {},
-    create: { code: "SATPAM", name: "Satpam (Shift)", description: "Jadwal kerja shift", scheduleType: "SHIFT", isActive: true },
+    create: { tenantId: tenantMbg.id, code: "SATPAM", name: "Satpam (Shift)", description: "Jadwal kerja shift", scheduleType: "SHIFT", isActive: true },
   });
   const satpamShifts = [
     { code: "PAGI", name: "Shift Pagi", startTime: "07:00", endTime: "15:00", isCrossDay: false },
@@ -56,62 +77,46 @@ async function main() {
   ];
   for (const s of satpamShifts) {
     await prisma.shift.upsert({
-      where: { code: s.code },
+      where: { tenantId_code: { tenantId: tenantMbg.id, code: s.code } },
       update: {},
-      create: { employeeTypeId: typeSatpam.id, code: s.code, name: s.name, startTime: s.startTime, endTime: s.endTime, isCrossDay: s.isCrossDay, is24Hours: s.is24Hours || false, durationMinutes: s.is24Hours ? 1440 : 480 }
+      create: { tenantId: tenantMbg.id, employeeTypeId: typeSatpam.id, code: s.code, name: s.name, startTime: s.startTime, endTime: s.endTime, isCrossDay: s.isCrossDay, is24Hours: s.is24Hours || false, durationMinutes: s.is24Hours ? 1440 : 480 }
     });
   }
-  await prisma.attendanceRule.upsert({
-    where: { id: "rule-handover-satpam" },
-    update: {},
-    create: { id: "rule-handover-satpam", employeeTypeId: typeSatpam.id, ruleType: "HANDOVER", executionStage: "PRE_CHECK_IN", priority: 1, configuration: JSON.stringify({ requireHandover: true, requirePhoto: true, minPhotos: 1 }) }
-  });
-  await prisma.attendanceRule.upsert({
-    where: { id: "rule-patroli-satpam" },
-    update: {},
-    create: { id: "rule-patroli-satpam", employeeTypeId: typeSatpam.id, ruleType: "PERIODIC_REPORT", executionStage: "DURING_SHIFT", priority: 2, configuration: JSON.stringify({ intervalHours: 4, gracePeriodMinutes: 30, requirePhoto: true }) }
-  });
-  console.log("SATPAM type seeded");
+  console.log("MBG Employee Types seeded");
 
-  // 3. Sample Employees
+  // 5. Sample Employees
   const employees = [
-    { email: "ahmad.rizki@sams.id", nip: "2024001", name: "Ahmad Rizki", department: "IT Department", employeeTypeId: typeKantor.id, position: "Software Engineer" },
-    { email: "siti.nurhaliza@sams.id", nip: "2024002", name: "Siti Nurhaliza", department: "HR Department", employeeTypeId: typeKantor.id, position: "HR Specialist" },
-    { email: "budi.santoso@sams.id", nip: "2024003", name: "Budi Santoso", department: "Security", employeeTypeId: typeSatpam.id, position: "Satpam" },
+    { email: "ahmad.rizki@mbg.id", nip: "MBG-001", name: "Ahmad Rizki", department: "IT", employeeTypeId: typeKantor.id, position: "Software Engineer" },
+    { email: "siti.nurhaliza@mbg.id", nip: "MBG-002", name: "Siti Nurhaliza", department: "HR", employeeTypeId: typeKantor.id, position: "HR Specialist" },
+    { email: "budi.santoso@mbg.id", nip: "MBG-003", name: "Budi Santoso", department: "Security", employeeTypeId: typeSatpam.id, position: "Satpam" },
   ];
   for (const emp of employees) {
     const password = await bcrypt.hash("Pegawai@123", 12);
-    const user = await prisma.user.upsert({
-      where: { email: emp.email },
+    await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenantMbg.id, email: emp.email } },
       update: {},
       create: {
-        email: emp.email, password, role: "EMPLOYEE", isActive: true,
-        employee: { create: { nip: emp.nip, name: emp.name, department: emp.department, position: emp.position, isActive: true, employeeTypeId: emp.employeeTypeId } },
+        tenantId: tenantMbg.id, email: emp.email, password, role: "EMPLOYEE", isActive: true,
+        employee: { create: { tenantId: tenantMbg.id, nip: emp.nip, name: emp.name, department: emp.department, position: emp.position, isActive: true, employeeTypeId: emp.employeeTypeId } },
       },
     });
     console.log("Employee created:", emp.name);
   }
 
-  // 4. Office Location & Settings
-  await prisma.officeLocation.upsert({
-    where: { id: "office-main" },
-    update: {},
-    create: { id: "office-main", name: "Kantor Pusat", address: "Jl. Contoh No. 1, Jakarta", latitude: -6.2088, longitude: 106.8456, radius: 100, isActive: true },
-  });
+  // 6. Settings
   const settings = [
-    { key: "app_name", value: "SAMS - Smart Attendance Management System" },
+    { key: "app_name", value: "SAMS - PT. MBG" },
     { key: "timezone", value: "Asia/Jakarta" }, { key: "attendance_radius", value: "100" },
     { key: "office_lat", value: "-6.2088" }, { key: "office_lng", value: "106.8456" },
-    { key: "late_tolerance_min", value: "15" },
   ];
   for (const setting of settings) {
     await prisma.systemSetting.upsert({
-      where: { key: setting.key },
+      where: { tenantId_key: { tenantId: tenantMbg.id, key: setting.key } },
       update: { value: setting.value },
-      create: setting,
+      create: { tenantId: tenantMbg.id, key: setting.key, value: setting.value },
     });
   }
-  console.log("Settings seeded");
+  
   console.log("Seed complete!");
 }
 

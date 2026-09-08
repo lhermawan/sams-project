@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id } = await params;
@@ -21,7 +21,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
 
     const updated = await prisma.workSchedule.update({
-      where: { id },
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       data: {
         name: body.name,
         startTime: body.startTime,
@@ -30,7 +32,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
         effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : undefined,
         effectiveTo: body.effectiveTo ? new Date(body.effectiveTo) : null,
         isActive: body.isActive,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, schedule: updated });
@@ -42,11 +45,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id } = await params;
-    await prisma.workSchedule.delete({ where: { id } });
+    await prisma.workSchedule.delete({ where: { id,
+        tenantId: session.user.tenantId
+    } });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });

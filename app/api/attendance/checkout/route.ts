@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await auth();
-    if (!session || !session.user.employeeId) {
+    if (!session?.user?.tenantId || !session.user.employeeId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Calculate Distance & Early Out
     let calculatedDistance = 0;
-    const office = await prisma.officeLocation.findFirst({ where: { isActive: true } });
+    const office = await prisma.officeLocation.findFirst({ where: { isActive: true,
+        tenantId: session.user.tenantId
+    } });
     if (office && latitude && longitude) {
       const val = isWithinRadius(latitude, longitude, office.latitude, office.longitude, office.radius);
       calculatedDistance = val.distance;
@@ -137,7 +139,9 @@ export async function POST(req: NextRequest) {
 
     // 6. Update Attendance Record
     const updated = await prisma.attendance.update({
-      where: { id: attendance.id },
+      where: { id: attendance.id,
+          tenantId: session.user.tenantId
+    },
       data: {
         checkOutTime: now,
         checkOutPhoto: photoUrl,
@@ -147,7 +151,8 @@ export async function POST(req: NextRequest) {
         earlyOutMinutes,
         status: finalStatus,
         notes: appendedNotes.join(" | "),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     // 7. Audit Log & Notification
@@ -164,7 +169,8 @@ export async function POST(req: NextRequest) {
           incompleteReportsFlagged: shouldMarkIncomplete,
         }),
         ipAddress: ip,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     await prisma.notification.create({
@@ -175,7 +181,8 @@ export async function POST(req: NextRequest) {
         message: shouldMarkIncomplete
           ? `Absen pulang dicatat pada ${now.toLocaleTimeString("id-ID")} WIB dengan catatan laporan patroli belum lengkap.`
           : `Absen pulang berhasil dicatat pada ${now.toLocaleTimeString("id-ID")} WIB. Terima kasih atas kerja keras Anda!`,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({

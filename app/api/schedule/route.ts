@@ -4,9 +4,13 @@ import { prisma } from "@/lib/db";
 
 // GET all schedules
 export async function GET() {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+
   try {
     const schedules = await prisma.workSchedule.findMany({
       orderBy: { effectiveFrom: "desc" },
+        where: { tenantId: session.user.tenantId }
     });
     return NextResponse.json(schedules);
   } catch {
@@ -16,9 +20,12 @@ export async function GET() {
 
 // POST create schedule
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await req.json();
@@ -45,7 +52,8 @@ export async function POST(req: NextRequest) {
         effectiveFrom: new Date(effectiveFrom),
         effectiveTo: effectiveTo ? new Date(effectiveTo) : null,
         isActive: body.setActive ?? true,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     await prisma.auditLog.create({
@@ -55,7 +63,8 @@ export async function POST(req: NextRequest) {
         entity: "WorkSchedule",
         entityId: schedule.id,
         newData: JSON.stringify(body),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, schedule }, { status: 201 });

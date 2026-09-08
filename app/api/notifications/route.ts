@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const unreadOnly = searchParams.get("unread") === "true";
@@ -15,13 +15,16 @@ export async function GET(req: NextRequest) {
       where: {
         userId: session.user.id,
         ...(unreadOnly ? { isRead: false } : {}),
-      },
+          tenantId: session.user.tenantId
+    },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
     const unreadCount = await prisma.notification.count({
-      where: { userId: session.user.id, isRead: false },
+      where: { userId: session.user.id, isRead: false,
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ notifications, unreadCount });
@@ -34,7 +37,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const { id, markAllRead } = body;
@@ -46,8 +49,12 @@ export async function PATCH(req: NextRequest) {
       });
     } else if (id) {
       await prisma.notification.update({
-        where: { id },
-        data: { isRead: true },
+        where: { id,
+            tenantId: session.user.tenantId
+        },
+        data: { isRead: true,
+            tenantId: session.user.tenantId
+        },
       });
     }
 

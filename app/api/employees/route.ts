@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get("department") ?? "";
     const isActive = searchParams.get("isActive");
 
-    const where: any = {};
+    const where: any = { tenantId: session.user.tenantId };
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user?.tenantId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
     const body = await req.json();
     let { email, password, nip, name, department, position, phone, address, employeeTypeId } = body;
 
@@ -63,14 +67,14 @@ export async function POST(req: NextRequest) {
     email = (email || `${nip.toLowerCase()}@sams.id`).trim();
 
     // Check duplicate email — if exists, ensure uniqueness gracefully
-    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    const existingEmail = await prisma.user.findFirst({ where: { email, tenantId: session.user.tenantId } });
     if (existingEmail) {
       const [userPart, domainPart] = email.includes("@") ? email.split("@") : [email, "sams.id"];
       email = `${userPart}_${Date.now().toString().slice(-4)}@${domainPart}`;
     }
 
     // Check duplicate nip — if exists, ensure uniqueness gracefully
-    const existingNip = await prisma.employee.findUnique({ where: { nip } });
+    const existingNip = await prisma.employee.findFirst({ where: { nip, tenantId: session.user.tenantId } });
     if (existingNip) {
       nip = `${nip}-${Date.now().toString().slice(-3)}`;
     }
@@ -83,8 +87,9 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         role: "EMPLOYEE",
         isActive: true,
+        tenantId: session.user.tenantId,
         employee: {
-          create: { nip, name, department, position, phone, address, isActive: true, employeeTypeId: employeeTypeId || null },
+          create: { nip, name, department, position, phone, address, isActive: true, employeeTypeId: employeeTypeId || null, tenantId: session.user.tenantId },
         },
       },
       include: { employee: true },
@@ -99,6 +104,7 @@ export async function POST(req: NextRequest) {
           entity: "Employee",
           entityId: user.employee!.id,
           newData: JSON.stringify({ name, nip, department }),
+          tenantId: session.user.tenantId
         },
       });
     } catch {}

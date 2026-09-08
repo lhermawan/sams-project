@@ -3,12 +3,16 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+
   try {
     const shifts = await prisma.shift.findMany({
       include: {
         _count: { select: { employeeShifts: { where: { isActive: true } } } },
       },
       orderBy: { name: "asc" },
+        where: { tenantId: session.user.tenantId }
     });
     return NextResponse.json(shifts);
   } catch {
@@ -17,9 +21,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({error:"Unauthorized"}, {status:401});
+
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await req.json();
@@ -29,7 +36,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Field wajib tidak lengkap" }, { status: 400 });
     }
 
-    const existing = await prisma.shift.findUnique({ where: { code } });
+    const existing = await prisma.shift.findFirst({ where: { code,
+        tenantId: session.user.tenantId
+    } });
     if (existing) {
       return NextResponse.json({ error: "Kode shift sudah digunakan" }, { status: 400 });
     }
@@ -43,7 +52,8 @@ export async function POST(req: NextRequest) {
         isCrossDay: isCrossDay ?? false,
         toleranceMin: toleranceMin ?? 15,
         isActive: true,
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     await prisma.auditLog.create({
@@ -53,7 +63,8 @@ export async function POST(req: NextRequest) {
         entity: "Shift",
         entityId: shift.id,
         newData: JSON.stringify(body),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({ success: true, shift }, { status: 201 });

@@ -8,15 +8,17 @@ type Params = { params: Promise<{ id: string }> };
 export async function POST(req: NextRequest, { params }: Params) {
   try {
     const session = await auth();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session?.user?.tenantId || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
 
-    const employee = await prisma.employee.findUnique({
-      where: { id },
+    const employee = await prisma.employee.findFirst({
+      where: { id,
+          tenantId: session.user.tenantId
+    },
       include: { user: true },
     });
 
@@ -38,8 +40,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     const hashedPassword = await bcrypt.hash(passwordToSet, 12);
 
     await prisma.user.update({
-      where: { id: employee.userId },
-      data: { password: hashedPassword },
+      where: { id: employee.userId,
+          tenantId: session.user.tenantId
+    },
+      data: { password: hashedPassword,
+          tenantId: session.user.tenantId
+    },
     });
 
     await prisma.auditLog.create({
@@ -49,7 +55,8 @@ export async function POST(req: NextRequest, { params }: Params) {
         entity: "Employee",
         entityId: employee.id,
         newData: JSON.stringify({ email: employee.user.email }),
-      },
+          tenantId: session.user.tenantId
+    },
     });
 
     return NextResponse.json({
