@@ -14,20 +14,22 @@ export default async function SuperAdminReportsPage() {
   const tenants = await prisma.tenant.findMany({
     where: { isActive: true, subdomain: { not: "app" } },
     select: { id: true, name: true, subdomain: true },
-    orderBy: { name: "asc" }
+    orderBy: { name: "asc" },
   });
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Export Laporan</h1>
-          <p className="text-gray-500 mt-1">Tarik data absensi dari seluruh perusahaan atau perusahaan tertentu.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Laporan Presensi & Kehadiran
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Pantau ringkasan statistik, live preview data absensi, dan ekspor laporan per perusahaan maupun gabungan.
+          </p>
         </div>
 
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm">
-          <SuperAdminReportForm tenants={tenants} />
-        </div>
+        <SuperAdminReportForm tenants={tenants} />
       </div>
     </div>
   );
