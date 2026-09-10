@@ -46,7 +46,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                       tenantId: tenant.id,
                       tenantDomain: tenant.subdomain,
                       isActive: true,
-                      employeeId: realAdmin.employeeId || null,
+                      employeeId: realAdmin.employee?.id || null,
                       department: realAdmin.employee?.department || null,
                       photoUrl: realAdmin.employee?.photoUrl || null,
                       name: realAdmin.employee?.name || "Super Admin (Impersonating)"

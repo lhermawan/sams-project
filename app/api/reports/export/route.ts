@@ -23,7 +23,7 @@ async function getReportData(searchParams: URLSearchParams, session: any) {
   const dateFrom = from ? startOfDay(new Date(from)) : startOfMonth(now);
   const dateTo = to ? endOfDay(new Date(to)) : endOfMonth(now);
 
-  const where: any = { date: { gte: dateFrom, lte: dateTo } };
+  const where: any = { tenantId: session.user.tenantId, date: { gte: dateFrom, lte: dateTo } };
   if (department) where.employee = { ...where.employee, department: { contains: department } };
   if (employeeId) where.employeeId = employeeId;
 

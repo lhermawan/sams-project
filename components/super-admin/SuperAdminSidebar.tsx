@@ -17,61 +17,27 @@ import {
   ChevronRight,
   Shield,
   Sliders,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { useAdminLayout } from "./AdminLayoutClient";
+import { useSuperAdminLayout } from "./SuperAdminLayoutClient";
 
 const navItems = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/employees", icon: Users, label: "Pegawai" },
-  { href: "/admin/performance", icon: TrendingUp, label: "Kinerja Pegawai" },
-  { href: "/admin/employee-types", icon: Sliders, label: "Jenis Pegawai & Aturan" },
-  { href: "/admin/roster", icon: Calendar, label: "Penjadwalan Shift" },
-  { href: "/admin/attendance", icon: CalendarCheck, label: "Absensi" },
-  { href: "/admin/leave", icon: ClipboardList, label: "Izin & Cuti" },
-  { href: "/admin/reports", icon: FileText, label: "Laporan" },
-  { href: "/admin/settings", icon: Settings, label: "Pengaturan" },
-  { href: "/admin/audit-log", icon: Shield, label: "Audit Log" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Tenants" },
+  { href: "/users", icon: Users, label: "Users" },
+  { href: "/reports", icon: FileText, label: "Laporan" },
 ];
 
-export default function AdminSidebar() {
+export default function SuperAdminSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { sidebarOpen, setSidebarOpen, collapsed, setCollapsed } = useAdminLayout();
+  const { sidebarOpen, setSidebarOpen, collapsed, setCollapsed } = useSuperAdminLayout();
   const [logo, setLogo] = useState<string>("");
   const [appName, setAppName] = useState<string>("SAMS");
   const [companyName, setCompanyName] = useState<string>("");
 
-  const loadSettings = () => {
-    fetch(`/api/settings?_t=${Date.now()}`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data) {
-          setLogo(data.company_logo || "");
-          setAppName(data.app_name || "SAMS");
-          setCompanyName(data.company_name || "");
-        }
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    loadSettings();
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "branding-updated") {
-        loadSettings();
-      }
-    };
-    window.addEventListener("branding-updated", loadSettings);
-    window.addEventListener("storage", handleStorage);
-    return () => {
-      window.removeEventListener("branding-updated", loadSettings);
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
+  
 
   return (
     <>
@@ -106,7 +72,7 @@ export default function AdminSidebar() {
           </div>
           {(!collapsed || sidebarOpen) && (
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-sm leading-tight truncate">{appName}</div>
+              <div className="font-bold text-sm leading-tight truncate">SAMS Hub</div>
               <div className="text-xs text-gray-400 leading-tight truncate">
                 {companyName || "Admin Panel"}
               </div>

@@ -12,7 +12,10 @@ export default async function UsersPage() {
   }
 
   const users = await prisma.user.findMany({
-    where: { role: { not: "EMPLOYEE" } },
+    where: { 
+      role: { not: "EMPLOYEE" },
+      tenant: { subdomain: { not: "app" } }
+    },
     include: { tenant: { select: { name: true, subdomain: true } } },
     orderBy: [{ tenantId: "asc" }, { role: "asc" }, { email: "asc" }]
   });

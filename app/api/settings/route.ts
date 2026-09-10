@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const session = await auth();
-    const settings = await prisma.systemSetting.findMany({ where: { tenantId: session!.user.tenantId } });
+    if (!session || !session.user.tenantId) return NextResponse.json({});
+    
+    const settings = await prisma.systemSetting.findMany({ where: { tenantId: session.user.tenantId } });
     const map: Record<string, string> = {};
     for (const s of settings) map[s.key] = s.value;
 
