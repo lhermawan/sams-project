@@ -10,7 +10,7 @@ export default async function SuperAdminLayout({
 }) {
   const session = await auth();
   if (!session || session.user.role !== "SUPER_ADMIN") {
-    redirect("/super-admin/login");
+    redirect("/login");
   }
 
   return (

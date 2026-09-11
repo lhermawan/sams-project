@@ -28,18 +28,48 @@ export class AttendanceRuleEngine {
     context: AttendanceContext
   ): Promise<RuleValidationResult & { combinedDetails?: Record<string, any> }> {
     // Fetch active rules configured in database for this employee type
-    const dbRules = await prisma.attendanceRule.findMany({
+    // Fetch all rules configured in database for this employee type (both active and inactive)
+    const allDbRules = await prisma.attendanceRule.findMany({
       where: {
         employeeTypeId: context.employeeTypeId,
         executionStage: stage,
-        isActive: true,
       },
       orderBy: { priority: "asc" },
     });
 
+    const activeDbRules = allDbRules.filter(r => r.isActive);
+    const configuredRuleTypes = new Set(allDbRules.map(r => r.ruleType));
+    
+    // Default core rules that must run if they haven't been explicitly configured (neither active nor inactive)
+    const coreRules: Record<string, string[]> = {
+      PRE_CHECK_IN: [],
+      CHECK_IN: ["LOCATION", "LATE_TOLERANCE"],
+      PRE_CHECK_OUT: []
+    };
+    
+    const rulesToRun = [...activeDbRules];
+    
+    const stageCoreRules = coreRules[stage] || [];
+    for (const coreType of stageCoreRules) {
+      if (!configuredRuleTypes.has(coreType)) {
+        // Inject default rule configuration to run
+        rulesToRun.push({
+          id: "default_" + coreType,
+          employeeTypeId: context.employeeTypeId,
+          ruleType: coreType,
+          executionStage: stage,
+          isActive: true,
+          configuration: "{}",
+          priority: 99
+        } as any);
+      }
+    }
+    
+    rulesToRun.sort((a, b) => a.priority - b.priority);
+
     const combinedDetails: Record<string, any> = {};
 
-    for (const dbRule of dbRules) {
+    for (const dbRule of rulesToRun) {
       const handler = this.rulesRegistry.get(`${dbRule.ruleType}_${stage}`);
       if (!handler) {
         continue;

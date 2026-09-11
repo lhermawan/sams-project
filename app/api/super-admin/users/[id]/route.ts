@@ -42,6 +42,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       },
     });
 
+    // Hapus AuditLog yang terkait dengan user ini (karena skema tidak memiliki onDelete: Cascade)
+    await prisma.auditLog.deleteMany({ where: { userId: id } });
     await prisma.user.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {

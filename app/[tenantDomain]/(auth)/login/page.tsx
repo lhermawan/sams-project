@@ -16,8 +16,12 @@ export default function LoginPage() {
     let domain = params?.tenantDomain as string;
     if (!domain && typeof window !== "undefined") {
       const host = window.location.hostname;
-      if (host.includes(".")) {
-        domain = host.split(".")[0];
+      if (host.endsWith(".niskala.id")) {
+        const prefix = host.slice(0, -".niskala.id".length);
+        if (prefix && prefix !== "www" && prefix !== "app") domain = prefix;
+      } else if (host.includes(".localhost")) {
+        const prefix = host.split(".localhost")[0];
+        if (prefix && prefix !== "www" && prefix !== "app" && prefix !== "localhost") domain = prefix;
       }
     }
     setTenantDomain(domain || "");

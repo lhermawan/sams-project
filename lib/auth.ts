@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   trustHost: true,
   useSecureCookies: false,
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -18,64 +18,64 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials, req) {
         // --- IMPERSONATION LOGIC ---
-          if ((credentials as any)?.impersonationToken) {
-            const { decode } = require("next-auth/jwt");
-            try {
-              const decoded = await decode({
-                token: (credentials as any).impersonationToken as string,
-                secret: process.env.NEXTAUTH_SECRET || "default_secret",
-                salt: "impersonate"
+        if ((credentials as any)?.impersonationToken) {
+          const { decode } = require("next-auth/jwt");
+          try {
+            const decoded = await decode({
+              token: (credentials as any).impersonationToken as string,
+              secret: process.env.NEXTAUTH_SECRET || "default_secret",
+              salt: "impersonate",
+            });
+
+            if (decoded && decoded.impersonateTenantId) {
+              const tenant = await prisma.tenant.findUnique({
+                where: { id: decoded.impersonateTenantId as string },
               });
-              
-              if (decoded && decoded.impersonateTenantId) {
-                const tenant = await prisma.tenant.findUnique({
-                  where: { id: decoded.impersonateTenantId as string }
+
+              if (tenant) {
+                const realAdmin = await prisma.user.findFirst({
+                  where: { tenantId: tenant.id, role: "ADMIN" },
+                  include: { employee: true },
                 });
-                
-                if (tenant && tenant.subdomain === credentials.tenantDomain) {
-                  const realAdmin = await prisma.user.findFirst({
-                    where: { tenantId: tenant.id, role: "ADMIN" },
-                    include: { employee: true }
-                  });
-                  
-                  if (realAdmin) {
-                    return {
-                      id: realAdmin.id,
-                      email: realAdmin.email,
-                      role: "ADMIN",
-                      tenantId: tenant.id,
-                      tenantDomain: tenant.subdomain,
-                      isActive: true,
-                      employeeId: realAdmin.employee?.id || null,
-                      department: realAdmin.employee?.department || null,
-                      photoUrl: realAdmin.employee?.photoUrl || null,
-                      name: realAdmin.employee?.name || "Super Admin (Impersonating)"
-                    };
-                  } else {
-                    return {
-                      id: "superadmin-impersonator",
-                      email: "superadmin@" + tenant.subdomain + ".niskala.id",
-                      role: "ADMIN",
-                      tenantId: tenant.id,
-                      tenantDomain: tenant.subdomain,
-                      isActive: true,
-                      employeeId: null,
-                      department: null,
-                      photoUrl: null,
-                      name: "Super Admin (Mock)"
-                    };
-                  }
+
+                if (realAdmin) {
+                  return {
+                    id: realAdmin.id,
+                    email: realAdmin.email,
+                    role: "ADMIN",
+                    tenantId: tenant.id,
+                    tenantDomain: tenant.subdomain,
+                    isActive: true,
+                    employeeId: realAdmin.employee?.id || null,
+                    department: realAdmin.employee?.department || null,
+                    photoUrl: realAdmin.employee?.photoUrl || null,
+                    name: realAdmin.employee?.name || `Admin ${tenant.name}`,
+                  };
+                } else {
+                  return {
+                    id: "superadmin-impersonator-" + tenant.id,
+                    email: "admin@" + tenant.subdomain + ".niskala.id",
+                    role: "ADMIN",
+                    tenantId: tenant.id,
+                    tenantDomain: tenant.subdomain,
+                    isActive: true,
+                    employeeId: null,
+                    department: null,
+                    photoUrl: null,
+                    name: `Admin ${tenant.name}`,
+                  };
                 }
               }
-            } catch (e) {
-              console.error("Impersonation error", e);
-              return null;
             }
+          } catch (err) {
+            console.error("Impersonation error:", err);
+            return null;
           }
-          // --- END IMPERSONATION LOGIC ---
+          return null;
+        }
 
-          if (!credentials?.email || !credentials?.password) return null;
-        
+        if (!credentials?.email || !credentials?.password) return null;
+
         const email = (credentials.email as string).trim().toLowerCase();
         const tenantDomain = (credentials.tenantDomain as string)?.trim() || null;
 
@@ -88,9 +88,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             include: { employee: true, tenant: true },
           });
         } else {
-          // Tenant login attempt
-          const tenant = await prisma.tenant.findUnique({
-            where: { subdomain: tenantDomain },
+          // Tenant login attempt (case-insensitive for subdomain and email)
+          const tenant = await prisma.tenant.findFirst({
+            where: {
+              OR: [
+                { subdomain: tenantDomain },
+                { subdomain: { equals: tenantDomain, mode: "insensitive" } },
+              ],
+            },
           });
           if (!tenant || !tenant.isActive) return null;
 
@@ -99,7 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               tenantId_email: {
                 tenantId: tenant.id,
                 email: email,
-              }
+              },
             },
             include: { employee: true, tenant: true },
           });
@@ -144,27 +149,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Allow relative URLs
       if (url.startsWith("/")) return new URL(url, baseUrl).toString();
-      
-      // Allow multi-tenant subdomains
       try {
         const urlObj = new URL(url);
         const baseObj = new URL(baseUrl);
-        
-        // Allow if it's the exact same origin
         if (urlObj.origin === baseObj.origin) return url;
-        
-        // Allow localhost subdomains
         if (urlObj.hostname.endsWith(".localhost") || urlObj.hostname === "localhost") return url;
-        
-        // Allow production subdomains
         if (urlObj.hostname.endsWith(".niskala.id")) return url;
-        
       } catch (e) {
         return baseUrl;
       }
-      
       return baseUrl;
     },
     async jwt({ token, user }) {
@@ -198,6 +192,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 hours work session
+    maxAge: 8 * 60 * 60,
   },
 });
+
+export const { handlers, auth, signIn, signOut } = nextAuth;

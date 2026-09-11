@@ -39,7 +39,7 @@ export class LocationRule implements AttendanceRuleContract {
     }
 
     const office = await prisma.officeLocation.findFirst({
-      where: { isActive: true },
+      where: { isActive: true, tenantId: context.tenantId },
     });
 
     if (!office) {

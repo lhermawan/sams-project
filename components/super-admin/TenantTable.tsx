@@ -25,7 +25,10 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
       const { token } = await res.json();
       
       const port = window.location.port ? `:${window.location.port}` : '';
-      const url = `http://${subdomain}.localhost${port}/impersonate?token=${token}`;
+      const isLocal = window.location.hostname.endsWith("localhost") || window.location.hostname === "127.0.0.1";
+      const host = isLocal ? `${subdomain}.localhost${port}` : `${subdomain}.niskala.id`;
+      const protocol = window.location.protocol;
+      const url = `${protocol}//${host}/impersonate?token=${token}`;
       window.open(url, "_blank");
     } catch (err) {
       alert("Gagal masuk ke admin panel tenant ini");

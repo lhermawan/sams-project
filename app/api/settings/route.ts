@@ -13,16 +13,28 @@ export async function GET(req: NextRequest) {
       // Unauthenticated request, try to find tenant from host
       let hostname = req.headers.get("host") || "";
       hostname = hostname.split(":")[0];
-      const parts = hostname.split(".");
-      let subdomain = null;
-      if (hostname.endsWith("niskala.id") && parts.length >= 3 && parts[0] !== "www" && parts[0] !== "app") {
-        subdomain = parts[0];
-      } else if ((hostname.endsWith("localhost") || hostname === "127.0.0.1") && parts.length >= 2 && parts[0] !== "www" && parts[0] !== "app" && parts[0] !== "localhost") {
-        subdomain = parts[0];
+      let subdomain: string | null = null;
+      if (hostname.endsWith(".niskala.id")) {
+        const prefix = hostname.slice(0, -".niskala.id".length);
+        if (prefix && prefix !== "www" && prefix !== "app") {
+          subdomain = prefix;
+        }
+      } else if (hostname.includes(".localhost") || hostname.endsWith(".localhost")) {
+        const prefix = hostname.split(".localhost")[0];
+        if (prefix && prefix !== "www" && prefix !== "app" && prefix !== "localhost") {
+          subdomain = prefix;
+        }
       }
       
       if (subdomain) {
-        const t = await prisma.tenant.findUnique({ where: { subdomain } });
+        const t = await prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { subdomain },
+              { subdomain: { equals: subdomain, mode: "insensitive" } },
+            ],
+          },
+        });
         if (t) tenantId = t.id;
       }
     }

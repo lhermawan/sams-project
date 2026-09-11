@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/db";
+import { fromZonedTime } from "date-fns-tz";
 import { AttendanceRuleContract, RuleStage, AttendanceContext, RuleValidationResult } from "../types";
 
 export class LateRule implements AttendanceRuleContract {

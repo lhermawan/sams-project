@@ -10,21 +10,38 @@ export default function ImpersonatePage({ params }: { params: any }) {
   const unwrappedParams: any = use(params);
 
   useEffect(() => {
-    if (token && unwrappedParams.tenantDomain) {
-      signIn("credentials", {
-        impersonationToken: token,
-        tenantDomain: unwrappedParams.tenantDomain,
-        redirect: false
-      }).then((res) => {
-        if (res?.ok) {
-          window.location.href = "/admin/dashboard";
-        } else {
-          alert("Gagal memvalidasi token impersonate");
-          window.location.href = "/login";
-        }
-      });
+    if (!token) return;
+
+    let domain = unwrappedParams?.tenantDomain;
+    if (!domain && typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host.endsWith(".niskala.id")) {
+        const prefix = host.slice(0, -".niskala.id".length);
+        if (prefix && prefix !== "www" && prefix !== "app") domain = prefix;
+      } else if (host.includes(".localhost")) {
+        const prefix = host.split(".localhost")[0];
+        if (prefix && prefix !== "www" && prefix !== "app" && prefix !== "localhost") domain = prefix;
+      }
     }
-  }, [token, unwrappedParams.tenantDomain]);
+
+    signIn("credentials", {
+      impersonationToken: token,
+      tenantDomain: domain || "",
+      redirect: false,
+    }).then((res) => {
+      if (res?.ok) {
+        window.location.href = "/admin/dashboard";
+      } else {
+        console.error("Impersonate login failed:", res?.error);
+        alert("Gagal memvalidasi token impersonate: " + (res?.error || "Invalid session"));
+        window.location.href = "/login";
+      }
+    }).catch((err) => {
+      console.error("Impersonate error:", err);
+      alert("Terjadi kesalahan saat memproses sesi impersonate");
+      window.location.href = "/login";
+    });
+  }, [token, unwrappedParams?.tenantDomain]);
 
   if (!token) return <div className="p-10 text-center">Invalid or missing token.</div>;
 

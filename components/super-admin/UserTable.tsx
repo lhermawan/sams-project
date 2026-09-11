@@ -77,6 +77,11 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  const [editTarget, setEditTarget] = useState<UserItem | null>(null);
+  const [editForm, setEditForm] = useState({ email: "", role: "EMPLOYEE", isActive: true });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState("");
+
   // Reset Password Modal State (Identik dengan Admin EmployeeTable)
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [newPassword, setNewPassword] = useState("");

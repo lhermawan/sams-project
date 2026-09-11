@@ -26,23 +26,23 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users            User[]
-  employees        Employee[]
-  employeeTypes    EmployeeType[]
-  shifts           Shift[]
-  attendances      Attendance[]
-  officeLocations  OfficeLocation[]
-  workSchedules    WorkSchedule[]
-  holidays         Holiday[]
-  rules            AttendanceRule[]
-  systemSettings   SystemSetting[]
-  leaveRequests    LeaveRequest[]
-  auditLogs        AuditLog[]
-  notifications    Notification[]
-  employeeShifts   EmployeeShift[]
-  rosters          EmployeeShiftRoster[]
-  handovers        AttendanceHandover[]
-  periodicReports  PeriodicReport[]
+  users           User[]
+  employees       Employee[]
+  employeeTypes   EmployeeType[]
+  shifts          Shift[]
+  attendances     Attendance[]
+  officeLocations OfficeLocation[]
+  workSchedules   WorkSchedule[]
+  holidays        Holiday[]
+  rules           AttendanceRule[]
+  systemSettings  SystemSetting[]
+  leaveRequests   LeaveRequest[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  employeeShifts  EmployeeShift[]
+  rosters         EmployeeShiftRoster[]
+  handovers       AttendanceHandover[]
+  periodicReports PeriodicReport[]
 
   @@map("tenants")
 }
@@ -53,7 +53,7 @@ model User {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email     String   
+  email     String
   password  String
   role      Role     @default(EMPLOYEE)
   isActive  Boolean  @default(true)
@@ -74,7 +74,7 @@ model EmployeeType {
   id           String   @id @default(cuid())
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  code         String   
+  code         String
   name         String
   description  String?
   scheduleType String   @default("NON_SHIFT") // "SHIFT" or "NON_SHIFT"
@@ -95,23 +95,34 @@ model EmployeeType {
 // ─── Employee ────────────────────────────────────────────────────────────────
 
 model Employee {
-  id             String        @id @default(cuid())
-  tenantId       String
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  nip            String        
-  name           String
-  department     String
-  position       String
-  phone          String?
-  address        String?
-  photoUrl       String?
-  joinDate       DateTime      @default(now())
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id         String  @id @default(cuid())
+  tenantId   String
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nip        String
+  name       String
+  department String
+  position   String
+  phone      String?
+  address    String?
+  photoUrl   String?
 
-  userId         String        @unique
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nik                 String?
+  birthPlace          String?
+  birthDate           DateTime?
+  motherName          String?
+  education           String?
+  gender              String?
+  placement           String?
+  bankAccount         String?
+  sourceAccountNumber String?
+
+  joinDate  DateTime @default(now())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   employeeTypeId String?
   employeeType   EmployeeType? @relation(fields: [employeeTypeId], references: [id])
@@ -156,7 +167,7 @@ model WorkSchedule {
   employeeTypeId String?
   employeeType   EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
   name           String
-  dayOfWeek      Int?          // 1=Monday, 2=Tuesday, ..., 5=Friday, 6=Saturday, 7=Sunday
+  dayOfWeek      Int? // 1=Monday, 2=Tuesday, ..., 5=Friday, 6=Saturday, 7=Sunday
   isWorkDay      Boolean       @default(true)
   startTime      String?
   endTime        String?
@@ -194,7 +205,7 @@ model Shift {
   employeeTypeId        String?
   employeeType          EmployeeType? @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
   name                  String
-  code                  String        
+  code                  String
   startTime             String
   endTime               String
   isCrossDay            Boolean       @default(false)
@@ -205,12 +216,12 @@ model Shift {
   checkInEndBufferMin   Int           @default(360)
   isActive              Boolean       @default(true)
 
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  employeeShifts        EmployeeShift[]
-  rosters               EmployeeShiftRoster[]
-  attendances           Attendance[]
+  employeeShifts EmployeeShift[]
+  rosters        EmployeeShiftRoster[]
+  attendances    Attendance[]
 
   @@unique([tenantId, code])
   @@map("shifts")
@@ -245,8 +256,8 @@ model EmployeeShiftRoster {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  shift      Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    Shift?   @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   @@unique([employeeId, rosterDate])
   @@map("employee_shift_rosters")
@@ -255,19 +266,19 @@ model EmployeeShiftRoster {
 // ─── Dynamic Attendance Rules ────────────────────────────────────────────────
 
 model AttendanceRule {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   tenantId       String
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeTypeId String
-  ruleType       String       // "HANDOVER", "PERIODIC_REPORT", "LOCATION", "LATE_TOLERANCE", etc.
-  executionStage String       // "PRE_CHECK_IN", "CHECK_IN", "IN_SHIFT", "PRE_CHECK_OUT", "CHECK_OUT"
-  configuration  String       // JSON string storing dynamic settings
-  priority       Int          @default(0)
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  ruleType       String // "HANDOVER", "PERIODIC_REPORT", "LOCATION", "LATE_TOLERANCE", etc.
+  executionStage String // "PRE_CHECK_IN", "CHECK_IN", "IN_SHIFT", "PRE_CHECK_OUT", "CHECK_OUT"
+  configuration  String // JSON string storing dynamic settings
+  priority       Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
+  employeeType EmployeeType @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, employeeTypeId, ruleType])
   @@map("attendance_rules")
@@ -276,9 +287,9 @@ model AttendanceRule {
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 model Attendance {
-  id               String               @id @default(cuid())
+  id               String    @id @default(cuid())
   tenantId         String
-  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId       String
   employeeTypeId   String?
   shiftId          String?
@@ -295,22 +306,22 @@ model Attendance {
   checkOutLat      Float?
   checkOutLng      Float?
   checkOutDistance Float?
-  lateMinutes      Int                  @default(0)
-  earlyOutMinutes  Int                  @default(0)
-  status           String               @default("PENDING") // PENDING, VALID, LATE, INCOMPLETE, REJECTED
+  lateMinutes      Int       @default(0)
+  earlyOutMinutes  Int       @default(0)
+  status           String    @default("PENDING") // PENDING, VALID, LATE, INCOMPLETE, REJECTED
   notes            String?
   adminNotes       String?
   validatedBy      String?
   validatedAt      DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  employee         Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeType     EmployeeType?        @relation(fields: [employeeTypeId], references: [id])
-  shift            Shift?               @relation(fields: [shiftId], references: [id])
-  handover         AttendanceHandover?
-  periodicReports  PeriodicReport[]
-  ruleLogs         AttendanceRuleLog[]
+  employee        Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeType    EmployeeType?       @relation(fields: [employeeTypeId], references: [id])
+  shift           Shift?              @relation(fields: [shiftId], references: [id])
+  handover        AttendanceHandover?
+  periodicReports PeriodicReport[]
+  ruleLogs        AttendanceRuleLog[]
 
   @@unique([employeeId, date])
   @@map("attendances")
@@ -319,34 +330,34 @@ model Attendance {
 // ─── Handover (Serah Terima Tugas) ──────────────────────────────────────────
 
 model AttendanceHandover {
-  id             String                    @id @default(cuid())
+  id             String   @id @default(cuid())
   tenantId       String
-  tenant         Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  attendanceId   String?                   @unique
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  attendanceId   String?  @unique
   employeeId     String
   handedOverById String?
   handoverNotes  String
   itemChecklist  String?
-  status         String                    @default("COMPLETED")
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  status         String   @default("COMPLETED")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  attendance     Attendance?               @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
-  employee       Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  photos         AttendanceHandoverPhoto[]
+  attendance Attendance?               @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee   Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  photos     AttendanceHandoverPhoto[]
 
   @@map("attendance_handovers")
 }
 
 model AttendanceHandoverPhoto {
-  id            String             @id @default(cuid())
+  id            String   @id @default(cuid())
   handoverId    String
   photoUrl      String
   fileSizeBytes Int?
   mimeType      String?
-  createdAt     DateTime           @default(now())
+  createdAt     DateTime @default(now())
 
-  handover      AttendanceHandover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+  handover AttendanceHandover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
 
   @@map("attendance_handover_photos")
 }
@@ -354,9 +365,9 @@ model AttendanceHandoverPhoto {
 // ─── Periodic Report (Laporan Patroli Berkala) ──────────────────────────────
 
 model PeriodicReport {
-  id                 String                @id @default(cuid())
+  id                 String    @id @default(cuid())
   tenantId           String
-  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   attendanceId       String
   employeeId         String
   checkpointSequence Int
@@ -368,27 +379,27 @@ model PeriodicReport {
   longitude          Float?
   distanceMeters     Float?
   reportNotes        String?
-  status             String                @default("PENDING") // PENDING, SUBMITTED, LATE, MISSED, REJECTED
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  status             String    @default("PENDING") // PENDING, SUBMITTED, LATE, MISSED, REJECTED
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  attendance         Attendance            @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
-  employee           Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  photos             PeriodicReportPhoto[]
+  attendance Attendance            @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee   Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  photos     PeriodicReportPhoto[]
 
   @@map("periodic_reports")
 }
 
 model PeriodicReportPhoto {
-  id               String         @id @default(cuid())
+  id               String   @id @default(cuid())
   periodicReportId String
   photoUrl         String
   fileHash         String?
   fileSizeBytes    Int?
   mimeType         String?
-  createdAt        DateTime       @default(now())
+  createdAt        DateTime @default(now())
 
-  periodicReport   PeriodicReport @relation(fields: [periodicReportId], references: [id], onDelete: Cascade)
+  periodicReport PeriodicReport @relation(fields: [periodicReportId], references: [id], onDelete: Cascade)
 
   @@map("periodic_report_photos")
 }
@@ -396,7 +407,7 @@ model PeriodicReportPhoto {
 // ─── Rule Logs ───────────────────────────────────────────────────────────────
 
 model AttendanceRuleLog {
-  id              String      @id @default(cuid())
+  id              String   @id @default(cuid())
   attendanceId    String?
   employeeId      String
   ruleType        String
@@ -404,10 +415,10 @@ model AttendanceRuleLog {
   isPassed        Boolean
   failureReason   String?
   contextSnapshot String?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime @default(now())
 
-  attendance      Attendance? @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
-  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  attendance Attendance? @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("attendance_rule_logs")
 }
@@ -415,21 +426,21 @@ model AttendanceRuleLog {
 // ─── Leave Request ────────────────────────────────────────────────────────────
 
 model LeaveRequest {
-  id            String      @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
-  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   employeeId    String
   startDate     DateTime
   endDate       DateTime
   leaveType     String
   reason        String
   attachmentUrl String?
-  status        String      @default("PENDING")
+  status        String    @default("PENDING")
   adminNotes    String?
   approvedBy    String?
   approvedAt    DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
@@ -439,16 +450,16 @@ model LeaveRequest {
 // ─── Notification ─────────────────────────────────────────────────────────────
 
 model Notification {
-  id        String           @id @default(cuid())
+  id        String   @id @default(cuid())
   tenantId  String
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   type      String
   title     String
   message   String
-  isRead    Boolean          @default(false)
+  isRead    Boolean  @default(false)
   data      String?
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -482,7 +493,7 @@ model SystemSetting {
   id        String   @id @default(cuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  key       String   
+  key       String
   value     String
   updatedAt DateTime @updatedAt
 
