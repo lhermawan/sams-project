@@ -8,7 +8,21 @@ import { Eye, EyeOff, LogIn, Shield } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const params = useParams();
-  const tenantDomain = params.tenantDomain as string;
+  
+  // Fallback to hostname if params are not ready (Next.js 15 async params quirk)
+  const [tenantDomain, setTenantDomain] = useState<string>("");
+  
+  useEffect(() => {
+    let domain = params?.tenantDomain as string;
+    if (!domain && typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host.includes(".")) {
+        domain = host.split(".")[0];
+      }
+    }
+    setTenantDomain(domain || "");
+  }, [params]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

@@ -27,6 +27,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Tenants" },
   { href: "/users", icon: Users, label: "Users" },
   { href: "/reports", icon: FileText, label: "Laporan" },
+  { href: "/settings", icon: Settings, label: "Pengaturan" },
 ];
 
 export default function SuperAdminSidebar() {
@@ -138,7 +139,7 @@ export default function SuperAdminSidebar() {
             </div>
           )}
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
             className={cn(
               "flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm px-3 py-2 rounded-lg hover:bg-gray-800 w-full font-medium cursor-pointer",
               collapsed && !sidebarOpen && "justify-center"

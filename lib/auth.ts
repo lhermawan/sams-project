@@ -143,6 +143,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Allow relative URLs
+      if (url.startsWith("/")) return new URL(url, baseUrl).toString();
+      
+      // Allow multi-tenant subdomains
+      try {
+        const urlObj = new URL(url);
+        const baseObj = new URL(baseUrl);
+        
+        // Allow if it's the exact same origin
+        if (urlObj.origin === baseObj.origin) return url;
+        
+        // Allow localhost subdomains
+        if (urlObj.hostname.endsWith(".localhost") || urlObj.hostname === "localhost") return url;
+        
+        // Allow production subdomains
+        if (urlObj.hostname.endsWith(".niskala.id")) return url;
+        
+      } catch (e) {
+        return baseUrl;
+      }
+      
+      return baseUrl;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id || "";

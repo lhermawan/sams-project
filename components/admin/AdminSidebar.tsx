@@ -172,7 +172,7 @@ export default function AdminSidebar() {
             </div>
           )}
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
             className={cn(
               "flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors text-sm px-3 py-2 rounded-lg hover:bg-gray-800 w-full font-medium cursor-pointer",
               collapsed && !sidebarOpen && "justify-center"

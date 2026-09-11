@@ -4,18 +4,46 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !session.user.tenantId) return NextResponse.json({});
+    let tenantId = session?.user?.tenantId;
     
-    const settings = await prisma.systemSetting.findMany({ where: { tenantId: session.user.tenantId } });
+    if (!tenantId) {
+      // Unauthenticated request, try to find tenant from host
+      let hostname = req.headers.get("host") || "";
+      hostname = hostname.split(":")[0];
+      const parts = hostname.split(".");
+      let subdomain = null;
+      if (hostname.endsWith("niskala.id") && parts.length >= 3 && parts[0] !== "www" && parts[0] !== "app") {
+        subdomain = parts[0];
+      } else if ((hostname.endsWith("localhost") || hostname === "127.0.0.1") && parts.length >= 2 && parts[0] !== "www" && parts[0] !== "app" && parts[0] !== "localhost") {
+        subdomain = parts[0];
+      }
+      
+      if (subdomain) {
+        const t = await prisma.tenant.findUnique({ where: { subdomain } });
+        if (t) tenantId = t.id;
+      }
+    }
+
+    if (!tenantId) return NextResponse.json({});
+    
+    const settings = await prisma.systemSetting.findMany({ where: { tenantId } });
     const map: Record<string, string> = {};
-    for (const s of settings) map[s.key] = s.value;
+    
+    const publicKeys = ["app_name", "company_name", "company_tagline", "company_logo", "login_title", "login_subtitle", "login_footer_text", "footer_text", "support_contact"];
+    
+    for (const s of settings) {
+      // If unauthenticated, only return public branding keys
+      if (!session && !publicKeys.includes(s.key)) continue;
+      map[s.key] = s.value;
+    }
 
     if (!map.admin_name && session?.user?.name) {
-      map.admin_name = session!.user.name;
+      map.admin_name = session.user.name;
     }
+    
     return NextResponse.json(map, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
