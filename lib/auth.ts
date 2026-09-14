@@ -2,11 +2,14 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { decode } from "next-auth/jwt";
+
+const AUTH_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "sams-super-secret-key-2026-production-grade";
 
 const nextAuth = NextAuth({
   trustHost: true,
   useSecureCookies: false,
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  secret: AUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -19,13 +22,13 @@ const nextAuth = NextAuth({
       async authorize(credentials, req) {
         // --- IMPERSONATION LOGIC ---
         if ((credentials as any)?.impersonationToken) {
-          const { decode } = require("next-auth/jwt");
           try {
             const decoded = await decode({
               token: (credentials as any).impersonationToken as string,
-              secret: process.env.NEXTAUTH_SECRET || "default_secret",
+              secret: AUTH_SECRET,
               salt: "impersonate",
             });
+            console.log("[IMPERSONATE] Decoded token:", decoded);
 
             if (decoded && decoded.impersonateTenantId) {
               const tenant = await prisma.tenant.findUnique({

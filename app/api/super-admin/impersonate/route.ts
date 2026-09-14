@@ -14,17 +14,18 @@ export async function GET(req: NextRequest) {
 
     if (!tenantId) return NextResponse.json({ error: "Missing tenantId" }, { status: 400 });
 
-    const secret = process.env.NEXTAUTH_SECRET || "default_secret";
+    const AUTH_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "sams-super-secret-key-2026-production-grade";
     
-    // Generate a secure JWT using next-auth/jwt encode
+    // Generate a secure JWT using next-auth/jwt encode valid for 1 hour
     const token = await encode({
       token: { 
         impersonateTenantId: tenantId,
-        exp: Math.floor(Date.now() / 1000) + 60
       },
+      maxAge: 3600,
       salt: "impersonate",
-      secret
+      secret: AUTH_SECRET,
     });
+    console.log("[IMPERSONATE] Generated token for tenantId:", tenantId);
 
     return NextResponse.json({ token });
   } catch (error) {

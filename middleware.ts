@@ -50,12 +50,12 @@ export default auth((req) => {
     const role = session.user?.role;
 
     if (tenant) {
-      // Tenant route validation
-      if (pathname.startsWith("/admin") && role !== "ADMIN") {
+      // Tenant route validation (allow ADMIN and SUPER_ADMIN into /admin)
+      if (pathname.startsWith("/admin") && role !== "ADMIN" && role !== "SUPER_ADMIN") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
       const employeeRoutes = ["/dashboard", "/attendance", "/history", "/calendar", "/profile", "/leave"];
-      if (employeeRoutes.some((r) => pathname.startsWith(r)) && role !== "EMPLOYEE") {
+      if (employeeRoutes.some((r) => pathname.startsWith(r)) && role !== "EMPLOYEE" && role !== "SUPER_ADMIN") {
         return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
     } else {
@@ -67,7 +67,8 @@ export default auth((req) => {
             ? `${session.user.tenantDomain}.localhost:3000`
             : `${session.user.tenantDomain}.5758inc.my.id`;
           const destPath = session.user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
-          return NextResponse.redirect(new URL(`http://${targetHost}${destPath}`, req.url));
+          const scheme = isLocal ? "http" : "https";
+          return NextResponse.redirect(new URL(`${scheme}://${targetHost}${destPath}`, req.url));
         }
         return NextResponse.redirect(new URL("/login", req.url));
       }

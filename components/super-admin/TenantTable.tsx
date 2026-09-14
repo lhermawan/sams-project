@@ -29,7 +29,11 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
       const host = isLocal ? `${subdomain}.localhost${port}` : `${subdomain}.5758inc.my.id`;
       const protocol = window.location.protocol;
       const url = `${protocol}//${host}/impersonate?token=${token}`;
-      window.open(url, "_blank");
+      
+      const newWindow = window.open(url, "_blank");
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
+        window.location.href = url;
+      }
     } catch (err) {
       alert("Gagal masuk ke admin panel tenant ini");
     } finally {
@@ -118,7 +122,14 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
               <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 font-medium text-gray-900">{t.name}</td>
                 <td className="px-6 py-4 text-indigo-600 font-mono text-xs">
-                  <a href={"http://" + t.subdomain + ".localhost:3000"} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  <a 
+                    href={typeof window !== "undefined" && (window.location.hostname.endsWith("localhost") || window.location.hostname === "127.0.0.1")
+                      ? `http://${t.subdomain}.localhost:${window.location.port || 3000}`
+                      : `https://${t.subdomain}.5758inc.my.id`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="hover:underline"
+                  >
                     {t.subdomain}.5758inc.my.id
                   </a>
                 </td>
