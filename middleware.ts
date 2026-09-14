@@ -85,14 +85,20 @@ export default auth((req) => {
 
   // --- Domain Rewriting Logic ---
   if (tenant) {
-    return NextResponse.rewrite(new URL("/" + tenant + path, origin));
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = `/${tenant}${pathname}`;
+    return NextResponse.rewrite(rewriteUrl);
   }
 
   if (pathname === "/login") {
-    return NextResponse.rewrite(new URL("/app/login", origin));
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = "/app/login";
+    return NextResponse.rewrite(rewriteUrl);
   }
 
-  return NextResponse.rewrite(new URL("/super-admin" + (pathname === "/" ? "/dashboard" : path), origin));
+  const rewriteUrl = req.nextUrl.clone();
+  rewriteUrl.pathname = "/super-admin" + (pathname === "/" ? "/dashboard" : pathname);
+  return NextResponse.rewrite(rewriteUrl);
 });
 
 export const config = {
