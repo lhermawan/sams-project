@@ -79,7 +79,7 @@ export default function NewTenantPage() {
                     className="w-full px-4 py-2 border border-r-0 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="jayaabadi" 
                   />
                   <div className="px-4 py-2 bg-gray-100 border rounded-r-xl text-gray-500 flex items-center">
-                    .niskala.id
+                    .5758inc.my.id
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">Only letters, numbers, and hyphens.</p>

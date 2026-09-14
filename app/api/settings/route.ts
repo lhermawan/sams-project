@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
       let hostname = req.headers.get("host") || "";
       hostname = hostname.split(":")[0];
       let subdomain: string | null = null;
-      if (hostname.endsWith(".niskala.id")) {
-        const prefix = hostname.slice(0, -".niskala.id".length);
+      if (hostname.endsWith(".5758inc.my.id")) {
+        const prefix = hostname.slice(0, -".5758inc.my.id".length);
         if (prefix && prefix !== "www" && prefix !== "app") {
           subdomain = prefix;
         }

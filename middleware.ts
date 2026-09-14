@@ -13,8 +13,8 @@ export default auth((req) => {
   const path = pathname + (searchParams.length > 0 ? "?" + searchParams : "");
 
   let tenant: string | null = null;
-  if (hostname.endsWith(".niskala.id")) {
-    const prefix = hostname.slice(0, -".niskala.id".length);
+  if (hostname.endsWith(".5758inc.my.id")) {
+    const prefix = hostname.slice(0, -".5758inc.my.id".length);
     if (prefix && prefix !== "www" && prefix !== "app") {
       tenant = prefix;
     }
@@ -59,7 +59,7 @@ export default auth((req) => {
           const isLocal = hostname.endsWith("localhost") || hostname === "127.0.0.1";
           const targetHost = isLocal
             ? `${session.user.tenantDomain}.localhost:3000`
-            : `${session.user.tenantDomain}.niskala.id`;
+            : `${session.user.tenantDomain}.5758inc.my.id`;
           const destPath = session.user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
           return NextResponse.redirect(new URL(`http://${targetHost}${destPath}`, req.url));
         }

@@ -69,7 +69,7 @@ export default function NewUserForm({ tenants }: { tenants: any[] }) {
               >
                 <option value="" disabled>-- Pilih Perusahaan --</option>
                 {tenants.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.subdomain}.niskala.id)</option>
+                  <option key={t.id} value={t.id}>{t.name} ({t.subdomain}.5758inc.my.id)</option>
                 ))}
               </select>
             </div>

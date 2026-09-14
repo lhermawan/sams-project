@@ -362,7 +362,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
             <span className="text-xs text-indigo-700 font-medium bg-white px-2.5 py-1 rounded-full border border-indigo-200 w-fit">
               {tenantId === "ALL"
                 ? `Total ${tenants.length} Perusahaan Terdaftar`
-                : `${selectedTenantObj?.name || ""} (${selectedTenantObj?.subdomain}.niskala.id)`}
+                : `${selectedTenantObj?.name || ""} (${selectedTenantObj?.subdomain}.5758inc.my.id)`}
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -375,7 +375,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
                 <option value="ALL">-- Semua Perusahaan (Gabungan Seluruh Tenant) --</option>
                 {tenants.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name} ({t.subdomain}.niskala.id)
+                    {t.name} ({t.subdomain}.5758inc.my.id)
                   </option>
                 ))}
               </select>

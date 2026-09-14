@@ -248,7 +248,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
   const copyCredentials = () => {
     if (!resetResult) return;
     const loginDomain = resetResult.subdomain
-      ? `http://${resetResult.subdomain}.localhost:3000/login (atau ${resetResult.subdomain}.niskala.id/login)`
+      ? `http://${resetResult.subdomain}.localhost:3000/login (atau ${resetResult.subdomain}.5758inc.my.id/login)`
       : `http://localhost:3000/login`;
 
     const text = `Akun SAMS Anda:\nNama: ${resetResult.name || "-"}\nEmail: ${resetResult.email}\nPassword: ${resetResult.password}\nLink Login: ${loginDomain}`;
@@ -478,7 +478,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
                         </div>
                         {u.tenant?.subdomain && (
                           <span className="font-mono text-[11px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                            {u.tenant.subdomain}.niskala.id
+                            {u.tenant.subdomain}.5758inc.my.id
                           </span>
                         )}
                       </div>

@@ -72,17 +72,17 @@ export function resolveTenantIdentifier(tenantName: string): string {
 }
 
 /**
- * Resolves deterministic tenant domain: {TenantIdentifier}.niskala.id
+ * Resolves deterministic tenant domain: {TenantIdentifier}.5758inc.my.id
  */
 export function resolveTenantDomain(tenantIdentifier: string): string {
-  return `${tenantIdentifier}.niskala.id`;
+  return `${tenantIdentifier}.5758inc.my.id`;
 }
 
 /**
- * Resolves deterministic tenant admin email: {TenantIdentifier}@niskala.id
+ * Resolves deterministic tenant admin email: {TenantIdentifier}@5758inc.my.id
  */
 export function resolveAdminEmail(tenantIdentifier: string): string {
-  return `${tenantIdentifier}@niskala.id`;
+  return `${tenantIdentifier}@5758inc.my.id`;
 }
 
 /**
@@ -94,7 +94,7 @@ export function normalizeUsername(name: string): string {
   return name
     .toLowerCase()
     .trim()
-    .replace(/['’]/g, "")
+    .replace(/['ï¿½]/g, "")
     .replace(/[^a-z0-9\s.]/g, "")
     .replace(/\s+/g, ".")
     .replace(/\.+/g, ".")

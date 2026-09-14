@@ -15,8 +15,8 @@ export default function ImpersonatePage({ params }: { params: any }) {
     let domain = unwrappedParams?.tenantDomain;
     if (!domain && typeof window !== "undefined") {
       const host = window.location.hostname;
-      if (host.endsWith(".niskala.id")) {
-        const prefix = host.slice(0, -".niskala.id".length);
+      if (host.endsWith(".5758inc.my.id")) {
+        const prefix = host.slice(0, -".5758inc.my.id".length);
         if (prefix && prefix !== "www" && prefix !== "app") domain = prefix;
       } else if (host.includes(".localhost")) {
         const prefix = host.split(".localhost")[0];

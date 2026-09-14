@@ -26,7 +26,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
       
       const port = window.location.port ? `:${window.location.port}` : '';
       const isLocal = window.location.hostname.endsWith("localhost") || window.location.hostname === "127.0.0.1";
-      const host = isLocal ? `${subdomain}.localhost${port}` : `${subdomain}.niskala.id`;
+      const host = isLocal ? `${subdomain}.localhost${port}` : `${subdomain}.5758inc.my.id`;
       const protocol = window.location.protocol;
       const url = `${protocol}//${host}/impersonate?token=${token}`;
       window.open(url, "_blank");
@@ -119,7 +119,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
                 <td className="px-6 py-4 font-medium text-gray-900">{t.name}</td>
                 <td className="px-6 py-4 text-indigo-600 font-mono text-xs">
                   <a href={"http://" + t.subdomain + ".localhost:3000"} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    {t.subdomain}.niskala.id
+                    {t.subdomain}.5758inc.my.id
                   </a>
                 </td>
                 <td className="px-6 py-4">

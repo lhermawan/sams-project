@@ -54,7 +54,7 @@ const nextAuth = NextAuth({
                 } else {
                   return {
                     id: "superadmin-impersonator-" + tenant.id,
-                    email: "admin@" + tenant.subdomain + ".niskala.id",
+                    email: "admin@" + tenant.subdomain + ".5758inc.my.id",
                     role: "ADMIN",
                     tenantId: tenant.id,
                     tenantDomain: tenant.subdomain,
@@ -155,7 +155,7 @@ const nextAuth = NextAuth({
         const baseObj = new URL(baseUrl);
         if (urlObj.origin === baseObj.origin) return url;
         if (urlObj.hostname.endsWith(".localhost") || urlObj.hostname === "localhost") return url;
-        if (urlObj.hostname.endsWith(".niskala.id")) return url;
+        if (urlObj.hostname.endsWith(".5758inc.my.id")) return url;
       } catch (e) {
         return baseUrl;
       }

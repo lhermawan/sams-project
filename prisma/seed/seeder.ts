@@ -39,20 +39,20 @@ export async function runSeed(prisma: PrismaClient) {
     );
   }
 
-  // 3. Ensure System Tenant ("app") & Super Admin ("super@niskala.id") exist
+  // 3. Ensure System Tenant ("app") & Super Admin ("super@5758inc.my.id") exist
   const sysTenant = await prisma.tenant.upsert({
     where: { subdomain: "app" },
     update: {},
     create: {
       subdomain: "app",
       name: "System Admin",
-      domain: "app.niskala.id",
+      domain: "app.5758inc.my.id",
       isActive: true,
     },
   });
 
   const existingSuperAdmin = await prisma.user.findFirst({
-    where: { tenantId: sysTenant.id, email: "super@niskala.id" },
+    where: { tenantId: sysTenant.id, email: "super@5758inc.my.id" },
   });
 
   if (!existingSuperAdmin) {
@@ -60,13 +60,13 @@ export async function runSeed(prisma: PrismaClient) {
     await prisma.user.create({
       data: {
         tenantId: sysTenant.id,
-        email: "super@niskala.id",
+        email: "super@5758inc.my.id",
         password: superAdminPassword,
         role: "SUPER_ADMIN",
         isActive: true,
       },
     });
-    console.log("? Super Admin initialized: super@niskala.id");
+    console.log("? Super Admin initialized: super@5758inc.my.id");
   }
 
   // 4. Group employees by finalTenantName
