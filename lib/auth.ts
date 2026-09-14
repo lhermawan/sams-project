@@ -102,12 +102,14 @@ const nextAuth = NextAuth({
           });
           if (!tenant || !tenant.isActive) return null;
 
-          user = await prisma.user.findUnique({
+          user = await prisma.user.findFirst({
             where: {
-              tenantId_email: {
-                tenantId: tenant.id,
-                email: email,
-              },
+              tenantId: tenant.id,
+              OR: [
+                { email: email },
+                { email: `${email}@${tenant.subdomain}.5758inc.my.id` },
+                { employee: { nip: email } },
+              ],
             },
             include: { employee: true, tenant: true },
           });

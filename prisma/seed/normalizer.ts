@@ -64,11 +64,16 @@ export function normalizeTenantName(instansi: string): string {
 }
 
 /**
- * Resolves deterministic TenantIdentifier from tenant name by removing whitespace.
- * Preserves dots, e.g. "CV. Makuta Putra Karya" -> "CV.MakutaPutraKarya".
+ * Resolves deterministic TenantIdentifier from tenant name.
+ * Converts to lowercase, strips dots, spaces, special chars, preserving hyphens.
+ * E.g. "CV. Makuta Putra Karya" -> "cvmakutaputrakarya", "BPHL-VII" -> "bphl-vii".
  */
 export function resolveTenantIdentifier(tenantName: string): string {
-  return normalizeTenantName(tenantName).replace(/\s+/g, "");
+  const normalized = normalizeTenantName(tenantName);
+  return normalized
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\-]/g, "");
 }
 
 /**
@@ -79,10 +84,10 @@ export function resolveTenantDomain(tenantIdentifier: string): string {
 }
 
 /**
- * Resolves deterministic tenant admin email: {TenantIdentifier}@5758inc.my.id
+ * Resolves deterministic tenant admin email: admin@{TenantIdentifier}.5758inc.my.id
  */
 export function resolveAdminEmail(tenantIdentifier: string): string {
-  return `${tenantIdentifier}@5758inc.my.id`;
+  return `admin@${tenantIdentifier}.5758inc.my.id`;
 }
 
 /**

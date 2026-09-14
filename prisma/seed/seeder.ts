@@ -94,21 +94,21 @@ export async function runSeed(prisma: PrismaClient) {
     employeeCount: number;
   }> = [];
 
-  // 5. Seed Tenants, Admins, EmployeeTypes, and Employees
+  // 5. Clean up previous non-system tenant data to ensure clean replacement
+  console.log("Cleaning up previous non-system tenant data to ensure clean replacement...");
+  await prisma.tenant.deleteMany({
+    where: { subdomain: { not: "app" } },
+  });
+
+  // 6. Seed Tenants, Admins, EmployeeTypes, and Employees
   for (const [tenantName, empItems] of tenantGroups.entries()) {
     const tenantIdentifier = resolveTenantIdentifier(tenantName);
     const tenantDomain = resolveTenantDomain(tenantIdentifier);
     const adminEmail = resolveAdminEmail(tenantIdentifier);
 
-    // A. Upsert Tenant
-    const tenant = await prisma.tenant.upsert({
-      where: { subdomain: tenantIdentifier },
-      update: {
-        name: tenantName,
-        domain: tenantDomain,
-        isActive: true,
-      },
-      create: {
+    // A. Create Tenant
+    const tenant = await prisma.tenant.create({
+      data: {
         name: tenantName,
         subdomain: tenantIdentifier,
         domain: tenantDomain,
