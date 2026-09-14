@@ -58,7 +58,7 @@ export default function AdminNavbar() {
   const displayName = adminName || session?.user?.name || "Administrator";
   const title =
     Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ??
-    "SAMS";
+    "5758";
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3.5 sm:px-6 sticky top-0 z-20 shadow-xs">

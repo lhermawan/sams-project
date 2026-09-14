@@ -33,9 +33,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [branding, setBranding] = useState({
-    app_name: "SAMS",
-    company_name: "PT. Smart Attendance Management",
-    company_tagline: "Smart Attendance Management System",
+    app_name: "5758",
+    company_name: "5758 Attendance System",
+    company_tagline: "5758 Attendance System",
     company_logo: "",
     login_title: "Selamat Datang",
     login_subtitle: "Masuk ke akun Anda untuk melanjutkan",
@@ -50,9 +50,9 @@ export default function LoginPage() {
       .then((data) => {
         if (data) {
           setBranding({
-            app_name: data.app_name || "SAMS",
-            company_name: data.company_name || "PT. Smart Attendance Management",
-            company_tagline: data.company_tagline || data.company_name || "Smart Attendance Management System",
+            app_name: data.app_name || "5758",
+            company_name: data.company_name || "5758 Attendance System",
+            company_tagline: data.company_tagline || data.company_name || "5758 Attendance System",
             company_logo: data.company_logo || "",
             login_title: data.login_title || "Selamat Datang",
             login_subtitle: data.login_subtitle || "Masuk ke akun Anda untuk melanjutkan",

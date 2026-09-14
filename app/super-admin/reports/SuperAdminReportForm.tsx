@@ -192,7 +192,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
       const a = document.createElement("a");
       a.href = url;
       const tName = tenantId === "ALL" ? "Semua_Perusahaan" : (tenants.find((t) => t.id === tenantId)?.subdomain || tenantId);
-      a.download = `SAMS_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.csv`;
+      a.download = `5758_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -217,7 +217,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
       const a = document.createElement("a");
       a.href = url;
       const tName = tenantId === "ALL" ? "Semua_Perusahaan" : (tenants.find((t) => t.id === tenantId)?.subdomain || tenantId);
-      a.download = `SAMS_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.xlsx`;
+      a.download = `5758_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -243,7 +243,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
       a.href = url;
       const tName = tenantId === "ALL" ? "All_Tenants" : (tenants.find((t) => t.id === tenantId)?.subdomain || tenantId);
       const ext = tenantId === "ALL" ? "zip" : "pdf";
-      a.download = `SAMS_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.${ext}`;
+      a.download = `5758_${category === "kinerja" ? "Kinerja" : "Absensi"}_${tName}_${from}_${to}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -306,7 +306,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
       localStorage.setItem("sams_google_webhook", googleWebhookUrl.trim());
       const selectedTenantObj = tenants.find((t) => t.id === tenantId);
       const payload = {
-        title: "Laporan Absensi SAMS Super Admin",
+        title: "Laporan Absensi 5758 Super Admin",
         generatedAt: new Date().toISOString(),
         tenant: tenantId === "ALL" ? "Semua Perusahaan" : (selectedTenantObj?.name || tenantId),
         dateFrom: from,

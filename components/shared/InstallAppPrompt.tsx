@@ -108,14 +108,14 @@ export default function InstallAppPrompt() {
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-700" />
 
             <div className="flex items-start gap-3.5">
-              {/* SAMS App Icon */}
+              {/* App Icon */}
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 flex-shrink-0 flex items-center justify-center text-white shadow-md">
                 <Smartphone size={24} className="text-white" />
               </div>
 
               <div className="flex-1 min-w-0 pr-6">
                 <h4 className="font-bold text-gray-900 text-sm md:text-base leading-snug">
-                  Pasang Aplikasi SAMS di HP
+                  Pasang Aplikasi 5758 di HP
                 </h4>
                 <p className="text-xs text-gray-600 mt-1 leading-relaxed">
                   Jadikan shortcut di layar utama HP Anda agar bisa dibuka langsung dan cepat tanpa perlu ketik alamat web lagi.
@@ -158,7 +158,7 @@ export default function InstallAppPrompt() {
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
-                  SAMS
+                  5758
                 </div>
                 <h3 className="font-bold text-gray-900 text-sm">Cara Pasang di HP</h3>
               </div>
@@ -172,7 +172,7 @@ export default function InstallAppPrompt() {
 
             <div className="space-y-3 text-xs text-gray-700">
               <p className="font-medium text-gray-900">
-                Ikuti 2 langkah mudah untuk memasang shortcut SAMS di layar utama HP Anda:
+                Ikuti 2 langkah mudah untuk memasang shortcut 5758 di layar utama HP Anda:
               </p>
 
               {isIOS ? (
@@ -219,7 +219,7 @@ export default function InstallAppPrompt() {
 
               <div className="flex items-center gap-1.5 text-green-700 bg-green-50 p-2 rounded-xl font-medium border border-green-200">
                 <Check size={14} className="shrink-0" />
-                <span>Selesai! Ikon SAMS akan langsung muncul di menu HP Anda.</span>
+                <span>Selesai! Ikon 5758 akan langsung muncul di menu HP Anda.</span>
               </div>
             </div>
 

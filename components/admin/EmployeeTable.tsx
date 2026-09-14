@@ -390,7 +390,7 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
 
   const copyCredentials = () => {
     if (!result) return;
-    const text = `Akun SAMS Anda:\nEmail: ${result.email}\nPassword: ${result.password}\nLink: http://localhost:3001/login`;
+    const text = `Akun 5758 Anda:\nEmail: ${result.email}\nPassword: ${result.password}\nLink: http://localhost:3001/login`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

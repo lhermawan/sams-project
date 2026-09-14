@@ -1,6 +1,6 @@
-﻿{
-  "name": "SAMS - Smart Attendance Management System",
-  "short_name": "SAMS Absensi",
+{
+  "name": "5758 - Attendance System",
+  "short_name": "5758 Absensi",
   "description": "Sistem Informasi Absensi Pegawai Berbasis Geolocation & Face Recognition",
   "start_url": "/",
   "id": "/",

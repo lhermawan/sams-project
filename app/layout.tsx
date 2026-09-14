@@ -17,13 +17,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SAMS - Smart Attendance",
+  title: "5758 - Attendance System",
   description: "Sistem Informasi Absensi Pegawai Berbasis Geolocation",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SAMS",
+    title: "5758",
   },
   icons: {
     icon: "/icon.svg",

@@ -66,7 +66,30 @@ export async function runSeed(prisma: PrismaClient) {
         isActive: true,
       },
     });
-    console.log("? Super Admin initialized: super@5758inc.my.id");
+    console.log("✓ Super Admin initialized: super@5758inc.my.id");
+  }
+
+  // Ensure default SystemSettings for System Tenant
+  const sysSettings = [
+    { key: "app_name", value: "5758" },
+    { key: "company_name", value: "5758 Inc" },
+    { key: "company_tagline", value: "5758 Attendance System" },
+  ];
+  for (const s of sysSettings) {
+    await prisma.systemSetting.upsert({
+      where: {
+        tenantId_key: {
+          tenantId: sysTenant.id,
+          key: s.key,
+        },
+      },
+      update: { value: s.value },
+      create: {
+        tenantId: sysTenant.id,
+        key: s.key,
+        value: s.value,
+      },
+    });
   }
 
   // 4. Group employees by finalTenantName
@@ -170,6 +193,29 @@ export async function runSeed(prisma: PrismaClient) {
         data: { role: "ADMIN", isActive: true },
       });
       adminsCreatedCount++;
+    }
+
+    // Default system settings for the tenant
+    const tenantSettings = [
+      { key: "app_name", value: "5758" },
+      { key: "company_name", value: tenant.name },
+      { key: "company_tagline", value: "5758 Attendance System" },
+    ];
+    for (const s of tenantSettings) {
+      await prisma.systemSetting.upsert({
+        where: {
+          tenantId_key: {
+            tenantId: tenant.id,
+            key: s.key,
+          },
+        },
+        update: { value: s.value },
+        create: {
+          tenantId: tenant.id,
+          key: s.key,
+          value: s.value,
+        },
+      });
     }
 
     // D. Seed Employees for this tenant

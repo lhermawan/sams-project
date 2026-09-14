@@ -86,9 +86,9 @@ function SettingField({
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<"frontend" | "attendance">("frontend");
   const [settings, setSettings] = useState<Settings>({
-    app_name: "SAMS",
-    company_name: "PT. Smart Attendance Management",
-    company_tagline: "Smart Attendance Management System",
+    app_name: "5758",
+    company_name: "5758 Inc",
+    company_tagline: "5758 Attendance System",
     admin_name: "Administrator",
     company_logo: "",
     login_title: "Selamat Datang",
@@ -322,8 +322,8 @@ export default function SettingsPage() {
                 label="Nama Aplikasi / Sistem"
                 value={settings.app_name}
                 onChange={(v) => updateField("app_name", v)}
-                hint="Nama sistem (contoh: SAMS, AbsenKu, E-Presensi)"
-                placeholder="SAMS"
+                hint="Nama sistem (contoh: 5758, AbsenKu, E-Presensi)"
+                placeholder="5758"
               />
               <SettingField
                 label="Nama Perusahaan / Instansi"
@@ -433,9 +433,9 @@ export default function SettingsPage() {
                   <Shield className="w-7 h-7 text-blue-600" />
                 )}
               </div>
-              <div className="font-bold text-xl leading-tight">{settings.app_name || "SAMS"}</div>
+              <div className="font-bold text-xl leading-tight">{settings.app_name || "5758"}</div>
               <div className="text-xs text-blue-200">
-                {settings.company_tagline || settings.company_name || "Smart Attendance Management System"}
+                {settings.company_tagline || settings.company_name || "5758 Attendance System"}
               </div>
 
               <div className="bg-white rounded-xl p-4 text-gray-800 shadow-md text-left text-xs space-y-2 mt-3">

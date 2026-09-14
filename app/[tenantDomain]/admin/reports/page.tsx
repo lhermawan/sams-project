@@ -235,7 +235,7 @@ export default function ReportsPage() {
     try {
       localStorage.setItem("sams_google_webhook", googleWebhookUrl.trim());
       const payload = {
-        title: "Laporan Absensi SAMS",
+        title: "Laporan Absensi 5758",
         generatedAt: new Date().toISOString(),
         dateFrom: from,
         dateTo: to,

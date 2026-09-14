@@ -35,7 +35,7 @@ export default function SuperAdminSidebar() {
   const { data: session } = useSession();
   const { sidebarOpen, setSidebarOpen, collapsed, setCollapsed } = useSuperAdminLayout();
   const [logo, setLogo] = useState<string>("");
-  const [appName, setAppName] = useState<string>("SAMS");
+  const [appName, setAppName] = useState<string>("5758");
   const [companyName, setCompanyName] = useState<string>("");
 
   
@@ -73,7 +73,7 @@ export default function SuperAdminSidebar() {
           </div>
           {(!collapsed || sidebarOpen) && (
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-sm leading-tight truncate">SAMS Hub</div>
+              <div className="font-bold text-sm leading-tight truncate">5758 Hub</div>
               <div className="text-xs text-gray-400 leading-tight truncate">
                 {companyName || "Admin Panel"}
               </div>

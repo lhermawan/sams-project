@@ -41,7 +41,7 @@ export default function DynamicBranding() {
           appleIcon.href = targetFavicon;
 
           // 2. Update Browser Tab Title
-          const appName = data.app_name || "SAMS";
+          const appName = data.app_name || "5758";
           const companyName = data.company_name ? ` - ${data.company_name}` : "";
           document.title = `${appName}${companyName}`;
         })

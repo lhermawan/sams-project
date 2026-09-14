@@ -42,7 +42,7 @@ export default function AdminSidebar() {
   const { data: session } = useSession();
   const { sidebarOpen, setSidebarOpen, collapsed, setCollapsed } = useAdminLayout();
   const [logo, setLogo] = useState<string>("");
-  const [appName, setAppName] = useState<string>("SAMS");
+  const [appName, setAppName] = useState<string>("5758");
   const [companyName, setCompanyName] = useState<string>("");
 
   const loadSettings = () => {
@@ -51,7 +51,7 @@ export default function AdminSidebar() {
       .then((data) => {
         if (data) {
           setLogo(data.company_logo || "");
-          setAppName(data.app_name || "SAMS");
+          setAppName(data.app_name || "5758");
           setCompanyName(data.company_name || "");
         }
       })

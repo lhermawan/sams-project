@@ -251,7 +251,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
       ? `http://${resetResult.subdomain}.localhost:3000/login (atau ${resetResult.subdomain}.5758inc.my.id/login)`
       : `http://localhost:3000/login`;
 
-    const text = `Akun SAMS Anda:\nNama: ${resetResult.name || "-"}\nEmail: ${resetResult.email}\nPassword: ${resetResult.password}\nLink Login: ${loginDomain}`;
+    const text = `Akun 5758 Anda:\nNama: ${resetResult.name || "-"}\nEmail: ${resetResult.email}\nPassword: ${resetResult.password}\nLink Login: ${loginDomain}`;
     navigator.clipboard.writeText(text);
     setResetCopied(true);
     setTimeout(() => setResetCopied(false), 2000);

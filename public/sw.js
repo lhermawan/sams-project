@@ -1,4 +1,4 @@
-﻿// SAMS PWA Service Worker
+// 5758 PWA Service Worker
 const CACHE_NAME = 'sams-pwa-v1';
 
 self.addEventListener('install', (event) => {

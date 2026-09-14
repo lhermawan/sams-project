@@ -37,8 +37,8 @@ export default async function SuperAdminDashboard() {
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Super Admin Dashboard</h1>
-            <p className="text-gray-500 mt-1">Ringkasan statistik dan manajemen klien (Tenant) SAMS.</p>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>
+            <p className="text-gray-500 mt-1">Ringkasan statistik dan manajemen klien (Tenant) 5758.</p>
           </div>
           <Link 
             href="/tenants/new" 

@@ -144,7 +144,7 @@ export default async function EmployeeDashboardPage() {
             ) : null}
             <div className="leading-none">
               <span className="text-xs font-bold tracking-wider uppercase text-blue-100">
-                {settingsMap.company_name || settingsMap.app_name || "SAMS"}
+                {settingsMap.company_name || settingsMap.app_name || "5758 Attendance System"}
               </span>
             </div>
           </div>

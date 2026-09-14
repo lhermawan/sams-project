@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
 
       if (exportType === "excel") {
         const workbook = new ExcelJS.Workbook();
-        workbook.creator = "SAMS";
+        workbook.creator = "5758";
         workbook.created = new Date();
 
         for (const [tName, tRecords] of Object.entries(groupedRecords)) {
@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
         }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        const filename = `SAMS_Kinerja_${reqTenantId}_${format(dateFrom, "yyyyMMdd")}-${format(dateTo, "yyyyMMdd")}.xlsx`;
+        const filename = `5758_Kinerja_${reqTenantId}_${format(dateFrom, "yyyyMMdd")}-${format(dateTo, "yyyyMMdd")}.xlsx`;
 
         return new NextResponse(buffer as any, {
           headers: {
@@ -263,7 +263,7 @@ export async function GET(req: NextRequest) {
         });
 
         const csvString = [csvHeader, ...csvRows].join("\n");
-        const filename = `SAMS_Kinerja_${reqTenantId}_${format(dateFrom, "yyyyMMdd")}-${format(dateTo, "yyyyMMdd")}.csv`;
+        const filename = `5758_Kinerja_${reqTenantId}_${format(dateFrom, "yyyyMMdd")}-${format(dateTo, "yyyyMMdd")}.csv`;
 
         return new NextResponse(csvString, {
           headers: {
@@ -296,7 +296,7 @@ export async function GET(req: NextRequest) {
           return new NextResponse(zipBuffer as any, {
             headers: {
               "Content-Type": "application/zip",
-              "Content-Disposition": `attachment; filename="SAMS_Kinerja_All_Tenants.zip"`,
+              "Content-Disposition": `attachment; filename="5758_Kinerja_All_Tenants.zip"`,
             }
           });
         } else {
@@ -315,7 +315,7 @@ export async function GET(req: NextRequest) {
           return new NextResponse(buffer as any, {
             headers: {
               "Content-Type": "application/pdf",
-              "Content-Disposition": `attachment; filename="SAMS_Kinerja_${reqTenantId}.pdf"`,
+              "Content-Disposition": `attachment; filename="5758_Kinerja_${reqTenantId}.pdf"`,
             }
           });
         }
@@ -338,7 +338,7 @@ export async function GET(req: NextRequest) {
     // ── EXCEL Export ────────────────────────────────────────────────────────
         if (exportType === "excel") {
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "SAMS";
+      workbook.creator = "5758";
       workbook.created = new Date();
 
       const groupedRecords: Record<string, typeof records> = {};
@@ -597,7 +597,7 @@ export async function GET(req: NextRequest) {
         return new NextResponse(Buffer.from(zipContent as any) as any, {
           headers: {
             "Content-Type": "application/zip",
-            "Content-Disposition": `attachment; filename="SAMS_Absensi_All_Tenants.zip"`,
+            "Content-Disposition": `attachment; filename="5758_Absensi_All_Tenants.zip"`,
           }
         });
       } else {
@@ -624,7 +624,7 @@ export async function GET(req: NextRequest) {
         return new NextResponse(buffer as any, {
           headers: {
             "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="SAMS_Absensi_${reqTenantId}.pdf"`,
+            "Content-Disposition": `attachment; filename="5758_Absensi_${reqTenantId}.pdf"`,
           }
         });
       }

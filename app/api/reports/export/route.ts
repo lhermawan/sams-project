@@ -70,7 +70,7 @@ try {
     // ── EXCEL Export ────────────────────────────────────────────────────────
     if (exportType === "excel") {
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "SAMS";
+      workbook.creator = "5758";
       workbook.created = new Date();
 
       const sheet = workbook.addWorksheet("Laporan Absensi", {
