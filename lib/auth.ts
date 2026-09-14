@@ -148,6 +148,9 @@ const nextAuth = NextAuth({
     }),
   ],
   callbacks: {
+    authorized() {
+      return true; // Let custom middleware handle authorization and rewrites without interference
+    },
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return new URL(url, baseUrl).toString();
       try {
