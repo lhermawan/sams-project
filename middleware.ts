@@ -25,12 +25,18 @@ export default auth((req) => {
     }
   }
 
+  // If already rewritten internally, pass through
+  if (pathname.startsWith("/app/") || pathname.startsWith("/super-admin/") || (tenant && pathname.startsWith(`/${tenant}/`))) {
+    return NextResponse.next();
+  }
+
   // --- Auth & Role Redirection Logic ---
-  const publicRoutes = ["/login", "/impersonate", "/manifest.json", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/favicon.ico"];
-  const isPublic = publicRoutes.includes(pathname) || pathname.startsWith("/icons/") || pathname.startsWith("/api/");
+  const isLoginPage = pathname === "/login" || pathname.endsWith("/login");
+  const publicRoutes = ["/impersonate", "/manifest.json", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/favicon.ico"];
+  const isPublic = isLoginPage || publicRoutes.includes(pathname) || pathname.startsWith("/icons/") || pathname.startsWith("/api/");
 
   if (isPublic) {
-    if (pathname === "/login" && session) {
+    if (isLoginPage && session) {
       const role = session.user?.role;
       if (role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard", req.url));
       return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin/dashboard" : "/dashboard", req.url));
