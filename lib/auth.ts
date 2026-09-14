@@ -155,17 +155,15 @@ const nextAuth = NextAuth({
       return true; // Let custom middleware handle authorization and rewrites without interference
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return new URL(url, baseUrl).toString();
+      if (url.startsWith("/")) return url;
       try {
         const urlObj = new URL(url);
-        const baseObj = new URL(baseUrl);
-        if (urlObj.origin === baseObj.origin) return url;
         if (urlObj.hostname.endsWith(".localhost") || urlObj.hostname === "localhost") return url;
-        if (urlObj.hostname.endsWith(".5758inc.my.id")) return url;
+        if (urlObj.hostname.endsWith(".5758inc.my.id") || urlObj.hostname === "5758inc.my.id") return url;
       } catch (e) {
-        return baseUrl;
+        return url;
       }
-      return baseUrl;
+      return url;
     },
     async jwt({ token, user }) {
       if (user) {

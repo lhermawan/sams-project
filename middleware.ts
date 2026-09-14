@@ -25,6 +25,9 @@ export default auth((req) => {
     }
   }
 
+  const proto = req.headers.get("x-forwarded-proto") || (hostname.includes("localhost") ? "http" : "https");
+  const origin = `${proto}://${req.headers.get("host") || hostname}`;
+
   // If already rewritten internally, pass through
   if (pathname.startsWith("/app/") || pathname.startsWith("/super-admin/") || (tenant && pathname.startsWith(`/${tenant}/`))) {
     return NextResponse.next();
@@ -38,13 +41,18 @@ export default auth((req) => {
   if (isPublic) {
     if (isLoginPage && session) {
       const role = session.user?.role;
-      if (role === "SUPER_ADMIN") return NextResponse.redirect(new URL("/dashboard", req.url));
-      return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin/dashboard" : "/dashboard", req.url));
+      if (role === "SUPER_ADMIN") {
+        if (tenant) {
+          return NextResponse.redirect(new URL("/admin/dashboard", origin));
+        }
+        return NextResponse.redirect(new URL("/dashboard", origin));
+      }
+      return NextResponse.redirect(new URL(role === "ADMIN" ? "/admin/dashboard" : "/dashboard", origin));
     }
   } else {
     // Protected route: requires authentication
     if (!session) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL("/login", origin));
     }
 
     const role = session.user?.role;
@@ -52,11 +60,11 @@ export default auth((req) => {
     if (tenant) {
       // Tenant route validation (allow ADMIN and SUPER_ADMIN into /admin)
       if (pathname.startsWith("/admin") && role !== "ADMIN" && role !== "SUPER_ADMIN") {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/dashboard", origin));
       }
       const employeeRoutes = ["/dashboard", "/attendance", "/history", "/calendar", "/profile", "/leave"];
       if (employeeRoutes.some((r) => pathname.startsWith(r)) && role !== "EMPLOYEE" && role !== "SUPER_ADMIN") {
-        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+        return NextResponse.redirect(new URL("/admin/dashboard", origin));
       }
     } else {
       // Super admin domain route validation: must be SUPER_ADMIN
@@ -68,23 +76,23 @@ export default auth((req) => {
             : `${session.user.tenantDomain}.5758inc.my.id`;
           const destPath = session.user.role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
           const scheme = isLocal ? "http" : "https";
-          return NextResponse.redirect(new URL(`${scheme}://${targetHost}${destPath}`, req.url));
+          return NextResponse.redirect(new URL(`${scheme}://${targetHost}${destPath}`, origin));
         }
-        return NextResponse.redirect(new URL("/login", req.url));
+        return NextResponse.redirect(new URL("/login", origin));
       }
     }
   }
 
   // --- Domain Rewriting Logic ---
   if (tenant) {
-    return NextResponse.rewrite(new URL("/" + tenant + path, req.url));
+    return NextResponse.rewrite(new URL("/" + tenant + path, origin));
   }
 
   if (pathname === "/login") {
-    return NextResponse.rewrite(new URL("/app/login", req.url));
+    return NextResponse.rewrite(new URL("/app/login", origin));
   }
 
-  return NextResponse.rewrite(new URL("/super-admin" + (pathname === "/" ? "/dashboard" : path), req.url));
+  return NextResponse.rewrite(new URL("/super-admin" + (pathname === "/" ? "/dashboard" : path), origin));
 });
 
 export const config = {
