@@ -45,6 +45,69 @@ export default function EmployeeTypesAdminPage() {
   const [shift24Hours, setShift24Hours] = useState(false);
   const [shiftDuration, setShiftDuration] = useState(720);
 
+  // Helper to calculate duration in minutes between start and end time
+  const calculateShiftDuration = (
+    start: string,
+    end: string,
+    crossDay: boolean,
+    is24h: boolean
+  ) => {
+    if (is24h) return 1440;
+    if (!start || !end) return 0;
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) return 0;
+
+    const startTotal = startH * 60 + startM;
+    const endTotal = endH * 60 + endM;
+
+    if (crossDay || endTotal < startTotal) {
+      return 1440 - startTotal + endTotal;
+    } else {
+      return endTotal - startTotal;
+    }
+  };
+
+  const handleStartTimeChange = (newStart: string) => {
+    setShiftStartTime(newStart);
+    if (shift24Hours) {
+      setShiftDuration(1440);
+      return;
+    }
+    const [sH, sM] = newStart.split(":").map(Number);
+    const [eH, eM] = shiftEndTime.split(":").map(Number);
+    const isCross = !isNaN(sH) && !isNaN(eH) && eH * 60 + eM < sH * 60 + sM;
+    if (isCross) setShiftCrossDay(true);
+    setShiftDuration(calculateShiftDuration(newStart, shiftEndTime, isCross || shiftCrossDay, shift24Hours));
+  };
+
+  const handleEndTimeChange = (newEnd: string) => {
+    setShiftEndTime(newEnd);
+    if (shift24Hours) {
+      setShiftDuration(1440);
+      return;
+    }
+    const [sH, sM] = shiftStartTime.split(":").map(Number);
+    const [eH, eM] = newEnd.split(":").map(Number);
+    const isCross = !isNaN(sH) && !isNaN(eH) && eH * 60 + eM < sH * 60 + sM;
+    if (isCross) setShiftCrossDay(true);
+    setShiftDuration(calculateShiftDuration(shiftStartTime, newEnd, isCross || shiftCrossDay, shift24Hours));
+  };
+
+  const handleCrossDayChange = (checked: boolean) => {
+    setShiftCrossDay(checked);
+    setShiftDuration(calculateShiftDuration(shiftStartTime, shiftEndTime, checked, shift24Hours));
+  };
+
+  const handle24HoursChange = (checked: boolean) => {
+    setShift24Hours(checked);
+    if (checked) {
+      setShiftDuration(1440);
+    } else {
+      setShiftDuration(calculateShiftDuration(shiftStartTime, shiftEndTime, shiftCrossDay, false));
+    }
+  };
+
   const fetchTypes = async () => {
     try {
       setLoading(true);
@@ -349,8 +412,16 @@ export default function EmployeeTypesAdminPage() {
                           setShiftStartTime(shift.startTime);
                           setShiftEndTime(shift.endTime);
                           setShiftCrossDay(shift.isCrossDay);
-                          setShift24Hours(shift.is24Hours);
-                          setShiftDuration(shift.durationMinutes || 720);
+                          setShiftDuration(
+                            shift.durationMinutes ||
+                              calculateShiftDuration(
+                                shift.startTime,
+                                shift.endTime,
+                                shift.isCrossDay,
+                                shift.is24Hours
+                              ) ||
+                              720
+                          );
                           setShowShiftModal(true);
                         }}
                         className="absolute top-3 right-3 p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-blue-600 hover:border-blue-200 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
@@ -608,7 +679,7 @@ export default function EmployeeTypesAdminPage() {
                     type="time"
                     required
                     value={shiftStartTime}
-                    onChange={(e) => setShiftStartTime(e.target.value)}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   />
                 </div>
@@ -618,7 +689,7 @@ export default function EmployeeTypesAdminPage() {
                     type="time"
                     required
                     value={shiftEndTime}
-                    onChange={(e) => setShiftEndTime(e.target.value)}
+                    onChange={(e) => handleEndTimeChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   />
                 </div>
@@ -628,7 +699,7 @@ export default function EmployeeTypesAdminPage() {
                   <input
                     type="checkbox"
                     checked={shiftCrossDay}
-                    onChange={(e) => setShiftCrossDay(e.target.checked)}
+                    onChange={(e) => handleCrossDayChange(e.target.checked)}
                     className="rounded text-blue-600 focus:ring-blue-500"
                   />
                   <span>Shift Lintas Hari (Pulang di hari berikutnya)</span>
@@ -637,24 +708,33 @@ export default function EmployeeTypesAdminPage() {
                   <input
                     type="checkbox"
                     checked={shift24Hours}
-                    onChange={(e) => {
-                      setShift24Hours(e.target.checked);
-                      if (e.target.checked) setShiftDuration(1440);
-                    }}
+                    onChange={(e) => handle24HoursChange(e.target.checked)}
                     className="rounded text-blue-600 focus:ring-blue-500"
                   />
                   <span>Shift 24 Jam Penuh (Durasi 24 jam)</span>
                 </label>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Durasi Total (Menit)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 uppercase">
+                    Durasi Total (Menit)
+                  </label>
+                  {shiftDuration > 0 && (
+                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                      {Math.floor(shiftDuration / 60)} Jam{shiftDuration % 60 > 0 ? ` ${shiftDuration % 60} Menit` : ""}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   required
                   value={shiftDuration}
                   onChange={(e) => setShiftDuration(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white transition-colors"
                 />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Otomatis terhitung dari jam mulai &amp; jam selesai.
+                </p>
               </div>
               <div className="flex items-center justify-end gap-2 pt-3">
                 <button

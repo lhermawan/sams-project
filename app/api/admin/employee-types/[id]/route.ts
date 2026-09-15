@@ -142,12 +142,31 @@ export async function PATCH(
     // 2. UPSERT SHIFT FOR THIS EMPLOYEE TYPE
     if (action === "UPSERT_SHIFT") {
       const { shiftId, code, name, startTime, endTime, isCrossDay, is24Hours, durationMinutes, toleranceMin } = payload;
+
+      let finalDuration = Number(durationMinutes);
+      if (!finalDuration || finalDuration <= 0) {
+        if (is24Hours) {
+          finalDuration = 1440;
+        } else if (startTime && endTime) {
+          const [sH, sM] = startTime.split(":").map(Number);
+          const [eH, eM] = endTime.split(":").map(Number);
+          const startTotal = sH * 60 + sM;
+          const endTotal = eH * 60 + eM;
+          finalDuration = (isCrossDay || endTotal < startTotal)
+            ? 1440 - startTotal + endTotal
+            : endTotal - startTotal;
+        } else {
+          finalDuration = 720;
+        }
+      }
+
       let shift;
       if (shiftId) {
         shift = await prisma.shift.update({
-          where: { id: shiftId,
-              tenantId: session.user.tenantId
-        },
+          where: {
+            id: shiftId,
+            tenantId: session.user.tenantId,
+          },
           data: {
             code,
             name,
@@ -155,10 +174,10 @@ export async function PATCH(
             endTime,
             isCrossDay: !!isCrossDay,
             is24Hours: !!is24Hours,
-            durationMinutes: durationMinutes ?? 720,
+            durationMinutes: finalDuration,
             toleranceMin: toleranceMin ?? 15,
-              tenantId: session.user.tenantId
-        },
+            tenantId: session.user.tenantId,
+          },
         });
       } else {
         shift = await prisma.shift.create({
@@ -170,10 +189,10 @@ export async function PATCH(
             endTime,
             isCrossDay: !!isCrossDay,
             is24Hours: !!is24Hours,
-            durationMinutes: durationMinutes ?? 720,
+            durationMinutes: finalDuration,
             toleranceMin: toleranceMin ?? 15,
-              tenantId: session.user.tenantId
-        },
+            tenantId: session.user.tenantId,
+          },
         });
       }
       return NextResponse.json({ success: true, message: "Shift berhasil disimpan.", data: shift });
