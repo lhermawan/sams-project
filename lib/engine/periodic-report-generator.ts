@@ -26,14 +26,6 @@ export class PeriodicReportGenerator {
       return 0;
     }
 
-    // Check if reports are already generated for this attendance session
-    const existing = await prisma.periodicReport.count({
-      where: { attendanceId: attendance.id },
-    });
-    if (existing > 0) {
-      return 0;
-    }
-
     const rule = attendance.employee.employeeType.rules[0];
     if (!rule) {
       return 0;
@@ -51,12 +43,19 @@ export class PeriodicReportGenerator {
       !attendance.shift;
 
     if (isNonShift) {
-      // Non-Shift: 1 Daily Performance / Activity Report
-      const baseDate = new Date(attendance.workDate || attendance.date);
-      const scheduledAt = new Date(baseDate);
-      scheduledAt.setHours(17, 0, 0, 0);
+      // Non-Shift: Configurable Daily Reports (default: 1)
+      const dailyCount = Math.max(1, Number(config.dailyReportCount) || 1);
 
-      // Tolerance starts when checked in, ends at end of day
+      const existingReports = await prisma.periodicReport.findMany({
+        where: { attendanceId: attendance.id },
+        orderBy: { checkpointSequence: "asc" },
+      });
+
+      if (existingReports.length >= dailyCount) {
+        return 0;
+      }
+
+      const baseDate = new Date(attendance.workDate || attendance.date);
       const toleranceStartAt = attendance.checkInTime
         ? new Date(attendance.checkInTime)
         : new Date(new Date(baseDate).setHours(6, 0, 0, 0));
@@ -64,19 +63,34 @@ export class PeriodicReportGenerator {
       const toleranceEndAt = new Date(baseDate);
       toleranceEndAt.setHours(23, 59, 59, 999);
 
-      await prisma.periodicReport.create({
-        data: {
-          tenantId: attendance.tenantId,
-          attendanceId: attendance.id,
-          employeeId: attendance.employeeId,
-          checkpointSequence: 1,
-          scheduledAt,
-          toleranceStartAt,
-          toleranceEndAt,
-          status: "PENDING",
-        },
-      });
-      return 1;
+      let createdCount = 0;
+      for (let seq = existingReports.length + 1; seq <= dailyCount; seq++) {
+        const scheduledAt = new Date(baseDate);
+        scheduledAt.setHours(17, 0, 0, 0);
+
+        await prisma.periodicReport.create({
+          data: {
+            tenantId: attendance.tenantId,
+            attendanceId: attendance.id,
+            employeeId: attendance.employeeId,
+            checkpointSequence: seq,
+            scheduledAt,
+            toleranceStartAt,
+            toleranceEndAt,
+            status: "PENDING",
+          },
+        });
+        createdCount++;
+      }
+      return createdCount;
+    }
+
+    // Shift-based generation: check if any already generated
+    const existing = await prisma.periodicReport.count({
+      where: { attendanceId: attendance.id },
+    });
+    if (existing > 0) {
+      return 0;
     }
 
     if (!attendance.shift) {

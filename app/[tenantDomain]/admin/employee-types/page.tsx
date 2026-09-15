@@ -763,6 +763,7 @@ function HandoverRuleCard({ typeId, initialConfig, isActive, onSave, saving }: a
 function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, saving }: any) {
   const [active, setActive] = useState(isActive ?? false);
   const [label, setLabel] = useState(initialConfig.label ?? "");
+  const [dailyReportCount, setDailyReportCount] = useState(initialConfig.dailyReportCount ?? 1);
   const [requirePhoto, setRequirePhoto] = useState(initialConfig.requirePhoto !== false);
   const [intervalHours, setIntervalHours] = useState(initialConfig.intervalHours ?? 4);
   const [toleranceBeforeMin, setToleranceBeforeMin] = useState(initialConfig.toleranceBeforeMin ?? 30);
@@ -773,6 +774,7 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
   useEffect(() => {
     setActive(isActive ?? false);
     setLabel(initialConfig.label ?? "");
+    setDailyReportCount(initialConfig.dailyReportCount ?? 1);
     setRequirePhoto(initialConfig.requirePhoto !== false);
     setIntervalHours(initialConfig.intervalHours ?? 4);
     setToleranceBeforeMin(initialConfig.toleranceBeforeMin ?? 30);
@@ -820,6 +822,27 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+              Kegiatan / Hari (Non-Shift)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={dailyReportCount}
+                onChange={(e) => setDailyReportCount(Math.max(1, Number(e.target.value)))}
+                disabled={!active}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+              />
+              <span className="text-xs text-gray-500">Laporan</span>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Jumlah kegiatan per hari untuk non-shift.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
               Interval (Khusus Shift)
             </label>
             <div className="flex items-center gap-2">
@@ -834,23 +857,27 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
               />
               <span className="text-xs text-gray-500">Jam</span>
             </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Interval checkpoint per shift.
+            </p>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
-              Minimal Foto Bukti
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={10}
-                value={minPhotos}
-                onChange={(e) => setMinPhotos(Number(e.target.value))}
-                disabled={!active || !requirePhoto}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-              />
-              <span className="text-xs text-gray-500">Foto</span>
-            </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Minimal Foto Bukti per Kegiatan
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={minPhotos}
+              onChange={(e) => setMinPhotos(Number(e.target.value))}
+              disabled={!active || !requirePhoto}
+              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            />
+            <span className="text-xs text-gray-500">Foto</span>
           </div>
         </div>
 
@@ -894,6 +921,7 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
           onSave(
             {
               label: label.trim() || undefined,
+              dailyReportCount: Math.max(1, Number(dailyReportCount) || 1),
               requirePhoto,
               intervalHours,
               toleranceBeforeMin,
@@ -907,7 +935,7 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
         disabled={saving}
         className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-xs"
       >
-        Simpan Aturan Patroli Berkala
+        Simpan Aturan Kegiatan & Kinerja
       </button>
     </div>
   );

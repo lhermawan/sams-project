@@ -665,14 +665,14 @@ export default function AttendancePage() {
                       <div className="font-bold">
                         {periodicReports.length === 1
                           ? `${reportLabel} Hari Ini`
-                          : `Checkpoint ke-${report.checkpointSequence}`}
+                          : `${reportLabel} #${report.checkpointSequence}`}
                       </div>
                       <div className="text-[11px] opacity-75">
-                        {periodicReports.length === 1
-                          ? isSubmitted
-                            ? "Sudah dikirim & diverifikasi"
-                            : "Wajib diisi sebelum absen pulang"
-                          : `Jadwal: ${schedTime} WIB`}
+                        {isSubmitted
+                          ? "Sudah dikirim & diverifikasi"
+                          : schedTime && schedTime !== "17:00"
+                          ? `Jadwal: ${schedTime} WIB`
+                          : "Wajib diisi sebelum absen pulang"}
                       </div>
                     </div>
 
@@ -691,7 +691,10 @@ export default function AttendancePage() {
                           }}
                           className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5"
                         >
-                          <Camera size={13} /> {periodicReports.length === 1 ? "Isi Laporan" : "Lapor Patroli"}
+                          <Camera size={13} />{" "}
+                          {periodicReports.length === 1
+                            ? "Isi Laporan"
+                            : `Isi Kegiatan #${report.checkpointSequence}`}
                         </button>
                       )}
                     </div>

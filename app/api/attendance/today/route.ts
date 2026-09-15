@@ -115,10 +115,9 @@ export async function GET() {
         periodicReportConfig = {};
       }
 
-      // Auto-generate if not yet generated for this active attendance
+      // Auto-generate if not yet generated or needs additional checkpoints for this active attendance
       if (
         attendance &&
-        (!attendance.periodicReports || attendance.periodicReports.length === 0) &&
         !attendance.checkOutTime
       ) {
         const { PeriodicReportGenerator } = await import("@/lib/engine/periodic-report-generator");
@@ -208,6 +207,7 @@ export async function GET() {
             (employee.employeeType.scheduleType === "NON_SHIFT"
               ? "BLOCK"
               : "ALLOW_WITH_INCOMPLETE_STATUS"),
+          dailyReportCount: Number(periodicReportConfig.dailyReportCount) || 1,
         },
         type,
       },
