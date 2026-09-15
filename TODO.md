@@ -15,3 +15,5 @@ Berikut adalah fitur dan perbaikan yang perlu dikembangkan pada iterasi selanjut
 3. **Validasi (Lock) Absen Pulang**
    - Kunci (*lock*) tombol atau fitur Absen Pulang jika belum memasuki jam pulang yang telah dijadwalkan.
    - Fitur ini untuk mencegah pegawai melakukan check-out terlalu awal dari jadwal shift/kerja yang seharusnya.
+4. **Ubah Istilah 'Tenant' menjadi 'Mitra'**
+   - Lakukan refactor atau perubahan label pada antarmuka pengguna (UI) agar semua kata 'Tenant' diganti menjadi 'Mitra' untuk memberikan kesan yang lebih familiar.
