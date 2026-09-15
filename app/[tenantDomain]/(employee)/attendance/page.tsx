@@ -140,7 +140,7 @@ export default function AttendancePage() {
 
   // --- Load office info + today status ---
   const fetchStatus = () => {
-    fetch("/api/settings/office")
+    fetch(`/api/settings/office?_t=${Date.now()}`)
       .then((r) => r.json())
       .then(setOffice)
       .catch(() => {});
