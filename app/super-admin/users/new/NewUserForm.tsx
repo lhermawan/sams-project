@@ -79,7 +79,7 @@ export default function NewUserForm({ tenants }: { tenants: any[] }) {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Add New User</h1>
-          <p className="text-gray-500">Buat akun untuk Mitra (Tenant) yang sudah ada.</p>
+          <p className="text-gray-500">Buat akun untuk Mitra yang sudah ada.</p>
         </div>
       </div>
 

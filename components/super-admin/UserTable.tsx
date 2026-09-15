@@ -299,13 +299,13 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
 
             {/* Dropdown Filters */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Filter Tenant */}
+              {/* Filter Mitra */}
               <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs">
                 <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <select
                   value={selectedTenant}
                   onChange={(e) => setSelectedTenant(e.target.value)}
-                  aria-label="Filter Tenant Perusahaan"
+                  aria-label="Filter Mitra Perusahaan"
                   className="bg-transparent text-gray-700 font-medium focus:outline-none cursor-pointer pr-1"
                 >
                   <option value="ALL">Semua Perusahaan</option>
@@ -327,7 +327,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
                   className="bg-transparent text-gray-700 font-medium focus:outline-none cursor-pointer pr-1"
                 >
                   <option value="ALL">Semua Role</option>
-                  <option value="ADMIN">Admin Tenant</option>
+                  <option value="ADMIN">Admin Mitra</option>
                   <option value="EMPLOYEE">Pegawai (Employee)</option>
                   <option value="SUPER_ADMIN">Super Admin</option>
                 </select>
@@ -388,7 +388,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
                 <th className="px-6 py-3.5">User / Identitas</th>
                 <th className="px-6 py-3.5">Email Login</th>
                 <th className="px-6 py-3.5">Role</th>
-                <th className="px-6 py-3.5">Perusahaan / Tenant</th>
+                <th className="px-6 py-3.5">Perusahaan / Mitra</th>
                 <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5 text-right">Aksi</th>
               </tr>
@@ -436,7 +436,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
                             </div>
                           ) : (
                             <div className="text-xs text-gray-400 mt-0.5">
-                              {isSuperAdmin ? "Akses Penuh Sistem" : "Pengelola Tenant"}
+                              {isSuperAdmin ? "Akses Penuh Sistem" : "Pengelola Mitra"}
                             </div>
                           )}
                         </div>
@@ -598,7 +598,7 @@ export default function UserTable({ initialUsers, tenants, currentUserId }: User
                 </div>
               )}
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">Perusahaan / Tenant:</span>
+                <span className="text-gray-500">Perusahaan / Mitra:</span>
                 <span className="font-medium text-gray-800">
                   {selectedUser.tenant?.name || "-"}
                 </span>

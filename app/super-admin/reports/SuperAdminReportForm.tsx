@@ -84,7 +84,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
   const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const today = now.toISOString().split("T")[0];
 
-  // 1. Selector Tenant Utama
+  // 1. Selector Mitra Utama
   const [tenantId, setTenantId] = useState("ALL");
 
   // 2. Kategori & Mode Laporan
@@ -352,12 +352,12 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
     <div className="space-y-6">
       {/* ── CARD FILTER UTAMA ──────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xs space-y-5">
-        {/* 1. Selector Tenant Utama */}
+        {/* 1. Selector Mitra Utama */}
         <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4.5 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <label className="block text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
               <Building2 size={16} className="text-indigo-600" />
-              Pilih Perusahaan (Tenant)
+              Pilih Perusahaan (Mitra)
             </label>
             <span className="text-xs text-indigo-700 font-medium bg-white px-2.5 py-1 rounded-full border border-indigo-200 w-fit">
               {tenantId === "ALL"
@@ -372,7 +372,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
                 onChange={(e) => setTenantId(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs cursor-pointer"
               >
-                <option value="ALL">-- Semua Perusahaan (Gabungan Seluruh Tenant) --</option>
+                <option value="ALL">-- Semua Perusahaan (Gabungan Seluruh Mitra) --</option>
                 {tenants.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name} ({t.subdomain}.5758inc.my.id)
@@ -502,7 +502,7 @@ export default function SuperAdminReportForm({ tenants }: { tenants: TenantOptio
                   onChange={(e) => setDepartment(e.target.value)}
                   className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-xs cursor-pointer"
                 >
-                  <option value="">-- Semua Bagian di Tenant Ini --</option>
+                  <option value="">-- Semua Bagian di Mitra Ini --</option>
                   {departments.map((d) => (
                     <option key={d} value={d}>
                       Bagian: {d}

@@ -47,7 +47,7 @@ export default function NewTenantPage() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Add New Tenant</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Tambah Mitra Baru</h1>
             <p className="text-gray-500">Register a new company to the platform.</p>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function NewTenantPage() {
                 type="submit" disabled={loading}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Tenant"}
+                {loading ? "Creating..." : "Buat Mitra"}
               </button>
             </div>
           </form>

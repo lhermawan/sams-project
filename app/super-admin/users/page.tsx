@@ -12,7 +12,7 @@ export default async function UsersPage() {
     redirect("/super-admin/login");
   }
 
-  // Ambil list semua tenant untuk filter dropdown
+  // Ambil list semua mitra untuk filter dropdown
   const tenants = await prisma.tenant.findMany({
     select: { id: true, name: true, subdomain: true },
     orderBy: { name: "asc" },
@@ -44,7 +44,7 @@ export default async function UsersPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Kelola Pengguna</h1>
             <p className="text-sm text-gray-500">
-              Kelola seluruh akun Admin, Pegawai, dan Super Admin di semua tenant perusahaan.
+              Kelola seluruh akun Admin, Pegawai, dan Super Admin di semua mitra perusahaan.
             </p>
           </div>
           <div className="flex items-center gap-2">

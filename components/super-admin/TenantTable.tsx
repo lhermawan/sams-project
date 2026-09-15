@@ -35,21 +35,21 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
         window.location.href = url;
       }
     } catch (err) {
-      alert("Gagal masuk ke admin panel tenant ini");
+      alert("Gagal masuk ke admin panel mitra ini");
     } finally {
       setLoadingId(null);
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus tenant "${name}"? Semua data (karyawan, absensi) akan terhapus permanen.`)) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus mitra "${name}"? Semua data (karyawan, absensi) akan terhapus permanen.`)) {
       return;
     }
 
     setLoadingId(id);
     try {
       const res = await fetch(`/api/super-admin/tenants/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus tenant");
+      if (!res.ok) throw new Error("Gagal menghapus mitra");
       router.refresh();
     } catch (err) {
       alert("Terjadi kesalahan saat menghapus");
@@ -160,7 +160,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
                       <button 
                         onClick={() => router.push("/tenants/" + t.id + "/edit")}
                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                        title="Edit Tenant"
+                        title="Edit Mitra"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -168,7 +168,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
                         onClick={() => handleDelete(t.id, t.name)}
                         disabled={loadingId === t.id}
                         className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Hapus Tenant"
+                        title="Hapus Mitra"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -182,7 +182,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
                 <td colSpan={6} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center justify-center text-gray-400">
                     <Search className="w-10 h-10 mb-3 text-gray-300" />
-                    <p className="text-gray-500 font-medium">Tidak ada tenant ditemukan</p>
+                    <p className="text-gray-500 font-medium">Tidak ada mitra ditemukan</p>
                     <p className="text-sm mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
                   </div>
                 </td>

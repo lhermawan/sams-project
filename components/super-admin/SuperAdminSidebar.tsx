@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { useSuperAdminLayout } from "./SuperAdminLayoutClient";
 
 const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Tenants" },
+  { href: "/dashboard", icon: LayoutDashboard, label: "Mitra" },
   { href: "/users", icon: Users, label: "Users" },
   { href: "/reports", icon: FileText, label: "Laporan" },
   { href: "/settings", icon: Settings, label: "Pengaturan" },

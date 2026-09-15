@@ -38,13 +38,13 @@ export default async function SuperAdminDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Dashboard Super Admin</h1>
-            <p className="text-gray-500 mt-1">Ringkasan statistik dan manajemen klien (Tenant) 5758.</p>
+            <p className="text-gray-500 mt-1">Ringkasan statistik dan manajemen klien (Mitra) 5758.</p>
           </div>
           <Link 
             href="/tenants/new" 
             className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 hover:shadow-md transition-all font-medium text-sm flex items-center gap-2"
           >
-            <span className="text-lg leading-none">+</span> Tambah Tenant
+            <span className="text-lg leading-none">+</span> Tambah Mitra
           </Link>
         </div>
 

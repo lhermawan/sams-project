@@ -44,7 +44,7 @@ export default function EditTenantForm({ tenant }: { tenant: any }) {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Edit Tenant</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Mitra</h1>
           <p className="text-gray-500">Update company details for {tenant.name}.</p>
         </div>
       </div>
