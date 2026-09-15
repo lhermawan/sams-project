@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
               department: department || "",
               position: position || "",
               employeeTypeId,
+              tenantId,
               isActive: true,
             }
           }
