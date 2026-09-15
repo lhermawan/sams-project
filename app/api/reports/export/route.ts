@@ -318,18 +318,36 @@ try {
           monthlyLateMinutes: monthlyLate,
         },
         records: records.map((r, i) => {
+          const allReports = (r as any).periodicReports || [];
+
+          // Format activity notes
           const activityNotes =
-            (r as any).periodicReports
-              ?.map((pr: any) => pr.reportNotes)
-              .filter(Boolean)
-              .join(" | ") ||
-            r.notes ||
-            "-";
-          const activityPhotos =
-            (r as any).periodicReports?.flatMap(
-              (pr: any) => pr.photos?.map((p: any) => p.photoUrl) || []
-            ) || [];
-          const primaryActivityPhoto = activityPhotos[0] || null;
+            allReports.length > 0
+              ? allReports
+                  .map((pr: any, idx: number) => {
+                    if (!pr.reportNotes) return null;
+                    const prefix = allReports.length > 1 ? `[Lap ${idx + 1}] ` : "";
+                    return `${prefix}${pr.reportNotes}`;
+                  })
+                  .filter(Boolean)
+                  .join("\n") || "-"
+              : r.notes || "-";
+
+          // Filter reports that have at least 1 photo
+          const reportsWithPhotos = allReports.filter(
+            (pr: any) => pr.photos && pr.photos.length > 0 && pr.photos[0]?.photoUrl
+          );
+
+          // Take max 3 activities (1 photo per activity)
+          // Priority to reports with photos, otherwise take first 3 reports
+          const selectedReports =
+            reportsWithPhotos.length > 0
+              ? reportsWithPhotos.slice(0, 3)
+              : allReports.slice(0, 3);
+
+          const actImg1 = selectedReports[0]?.photos?.[0]?.photoUrl || null;
+          const actImg2 = selectedReports[1]?.photos?.[0]?.photoUrl || null;
+          const actImg3 = selectedReports[2]?.photos?.[0]?.photoUrl || null;
 
           return {
             no: i + 1,
@@ -346,8 +364,11 @@ try {
             checkInPhoto: r.checkInPhoto || null,
             checkOutPhoto: r.checkOutPhoto || null,
             activityNotes,
-            activityPhoto: primaryActivityPhoto,
-            activityPhotosCount: activityPhotos.length,
+            activityPhoto: actImg1,
+            activityPhoto1: actImg1,
+            activityPhoto2: actImg2,
+            activityPhoto3: actImg3,
+            activityPhotosCount: reportsWithPhotos.length,
           };
         }),
         rows: records.map((r, i) => [

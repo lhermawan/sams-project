@@ -330,16 +330,20 @@ export default function ReportsPage() {
       const recordsToProcess = pdfData.records || [];
       const loadedRecords = await Promise.all(
         recordsToProcess.map(async (rec: any) => {
-          const [inImg, outImg, actImg] = await Promise.all([
+          const [inImg, outImg, actImg1, actImg2, actImg3] = await Promise.all([
             rec.checkInPhoto ? loadImageAsBase64(rec.checkInPhoto) : Promise.resolve(null),
             rec.checkOutPhoto ? loadImageAsBase64(rec.checkOutPhoto) : Promise.resolve(null),
-            rec.activityPhoto ? loadImageAsBase64(rec.activityPhoto) : Promise.resolve(null),
+            rec.activityPhoto1 ? loadImageAsBase64(rec.activityPhoto1) : Promise.resolve(null),
+            rec.activityPhoto2 ? loadImageAsBase64(rec.activityPhoto2) : Promise.resolve(null),
+            rec.activityPhoto3 ? loadImageAsBase64(rec.activityPhoto3) : Promise.resolve(null),
           ]);
           return {
             ...rec,
             inImg,
             outImg,
-            actImg,
+            actImg1,
+            actImg2,
+            actImg3,
           };
         })
       );
@@ -373,14 +377,16 @@ export default function ReportsPage() {
 
       // Table Columns:
       // 0: No (7mm)
-      // 1: Tgl & Shift (24mm)
-      // 2: Pegawai (40mm)
-      // 3: Masuk (18mm)
-      // 4: Pulang (18mm)
-      // 5: Uraian Kegiatan / Kinerja (98mm)
+      // 1: Tgl & Shift (22mm)
+      // 2: Pegawai (36mm)
+      // 3: Masuk (15mm)
+      // 4: Pulang (15mm)
+      // 5: Uraian Kegiatan / Kinerja (62mm)
       // 6: Foto Masuk (24mm)
       // 7: Foto Pulang (24mm)
-      // 8: Foto Bukti Kegiatan (24mm)
+      // 8: Kegiatan 1 (24mm)
+      // 9: Kegiatan 2 (24mm)
+      // 10: Kegiatan 3 (24mm)
       // Total = 277 mm (Margin left 10, right 10)
 
       autoTable(doc, {
@@ -396,7 +402,9 @@ export default function ReportsPage() {
             "Uraian Kegiatan / Kinerja Harian",
             "Foto Masuk",
             "Foto Pulang",
-            "Foto Bukti",
+            "Kegiatan 1",
+            "Kegiatan 2",
+            "Kegiatan 3",
           ],
         ],
         body: loadedRecords.map((r: any) => [
@@ -410,18 +418,22 @@ export default function ReportsPage() {
             : "Tidak ada catatan kegiatan",
           r.inImg ? "" : "-",
           r.outImg ? "" : "-",
-          r.actImg ? "" : "-",
+          r.actImg1 ? "" : "-",
+          r.actImg2 ? "" : "-",
+          r.actImg3 ? "" : "-",
         ]),
         columnStyles: {
           0: { cellWidth: 7, halign: "center", valign: "middle" },
-          1: { cellWidth: 24, halign: "center", valign: "middle" },
-          2: { cellWidth: 40, valign: "middle" },
-          3: { cellWidth: 18, halign: "center", valign: "middle" },
-          4: { cellWidth: 18, halign: "center", valign: "middle" },
-          5: { cellWidth: 98, valign: "middle" },
+          1: { cellWidth: 22, halign: "center", valign: "middle" },
+          2: { cellWidth: 36, valign: "middle" },
+          3: { cellWidth: 15, halign: "center", valign: "middle" },
+          4: { cellWidth: 15, halign: "center", valign: "middle" },
+          5: { cellWidth: 62, valign: "middle" },
           6: { cellWidth: 24, halign: "center", valign: "middle" },
           7: { cellWidth: 24, halign: "center", valign: "middle" },
           8: { cellWidth: 24, halign: "center", valign: "middle" },
+          9: { cellWidth: 24, halign: "center", valign: "middle" },
+          10: { cellWidth: 24, halign: "center", valign: "middle" },
         },
         styles: {
           minCellHeight: 22,
@@ -474,11 +486,39 @@ export default function ReportsPage() {
               } catch {}
             }
 
-            // Render Foto Bukti Kegiatan (Col index 8)
-            if (data.column.index === 8 && rec.actImg) {
+            // Render Foto Kegiatan 1 (Col index 8)
+            if (data.column.index === 8 && rec.actImg1) {
               try {
                 doc.addImage(
-                  rec.actImg,
+                  rec.actImg1,
+                  "JPEG",
+                  data.cell.x + (data.cell.width - 19) / 2,
+                  data.cell.y + (data.cell.height - 19) / 2,
+                  19,
+                  19
+                );
+              } catch {}
+            }
+
+            // Render Foto Kegiatan 2 (Col index 9)
+            if (data.column.index === 9 && rec.actImg2) {
+              try {
+                doc.addImage(
+                  rec.actImg2,
+                  "JPEG",
+                  data.cell.x + (data.cell.width - 19) / 2,
+                  data.cell.y + (data.cell.height - 19) / 2,
+                  19,
+                  19
+                );
+              } catch {}
+            }
+
+            // Render Foto Kegiatan 3 (Col index 10)
+            if (data.column.index === 10 && rec.actImg3) {
+              try {
+                doc.addImage(
+                  rec.actImg3,
                   "JPEG",
                   data.cell.x + (data.cell.width - 19) / 2,
                   data.cell.y + (data.cell.height - 19) / 2,
