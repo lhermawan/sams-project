@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       shift: sessionInfo.shift,
       schedule: sessionInfo.schedule,
+      tenantId: session.user.tenantId,
     };
 
     // 3. Execute Stage: PRE_CHECK_IN (Handover verification)

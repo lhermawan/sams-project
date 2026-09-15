@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       latitude,
       longitude,
       shift: attendance.shift,
+      tenantId: session.user.tenantId,
     };
 
     const preCheckOutResult = await AttendanceRuleEngine.executeStage(
