@@ -4,6 +4,7 @@ import { HandoverRule } from "./rules/handover-rule";
 import { LocationRule } from "./rules/location-rule";
 import { LateRule } from "./rules/late-rule";
 import { PeriodicReportCheckoutRule } from "./rules/periodic-report-checkout-rule";
+import { EarlyCheckoutRule } from "./rules/early-checkout-rule";
 
 export class AttendanceRuleEngine {
   private static rulesRegistry: Map<string, AttendanceRuleContract> = new Map();
@@ -14,6 +15,7 @@ export class AttendanceRuleEngine {
     this.register(new LocationRule());
     this.register(new LateRule());
     this.register(new PeriodicReportCheckoutRule());
+    this.register(new EarlyCheckoutRule());
   }
 
   public static register(rule: AttendanceRuleContract) {

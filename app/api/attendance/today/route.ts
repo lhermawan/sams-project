@@ -209,6 +209,18 @@ export async function GET() {
               : "ALLOW_WITH_INCOMPLETE_STATUS"),
           dailyReportCount: Number(periodicReportConfig.dailyReportCount) || 1,
         },
+        earlyCheckoutRule: (() => {
+          const rule = employee.employeeType.rules.find((r) => r.ruleType === "EARLY_CHECKOUT_LOCK");
+          if (!rule) return null;
+          try {
+            const config = JSON.parse(rule.configuration);
+            return {
+              toleranceMinutes: config.toleranceMinutes ?? 0,
+            };
+          } catch {
+            return { toleranceMinutes: 0 };
+          }
+        })(),
         type,
       },
       {

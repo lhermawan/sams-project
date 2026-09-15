@@ -570,6 +570,15 @@ export default function EmployeeTypesAdminPage() {
               onSave={(config: any, active: boolean) => handleSaveRule("LOCATION", config, active, "CHECK_IN", 4)}
               saving={saving}
             />
+
+            {/* Rule 5: Early Checkout Lock Rule */}
+            <EarlyCheckoutRuleCard
+              typeId={selectedType.id}
+              initialConfig={getRuleConfig("EARLY_CHECKOUT_LOCK")}
+              isActive={isRuleActive("EARLY_CHECKOUT_LOCK")}
+              onSave={(config: any, active: boolean) => handleSaveRule("EARLY_CHECKOUT_LOCK", config, active, "PRE_CHECK_OUT", 5)}
+              saving={saving}
+            />
           </div>
         </div>
       )}
@@ -1200,6 +1209,72 @@ function LocationRuleCard({ typeId, initialConfig, isActive, onSave, saving }: a
         className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-xs"
       >
         Simpan Aturan Lokasi
+      </button>
+    </div>
+  );
+}
+// Subcomponent: Early Checkout Lock Rule Card
+function EarlyCheckoutRuleCard({ typeId, initialConfig, isActive, onSave, saving }: any) {
+  const [active, setActive] = useState(isActive ?? false);
+  const [toleranceMinutes, setToleranceMinutes] = useState(initialConfig.toleranceMinutes ?? 0);
+
+  useEffect(() => {
+    setActive(isActive ?? false);
+    setToleranceMinutes(initialConfig.toleranceMinutes ?? 0);
+  }, [initialConfig, isActive]);
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
+      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="flex items-center gap-2">
+          <Clock className="text-red-600" size={20} />
+          <h4 className="font-bold text-gray-900">Validasi (Lock) Absen Pulang</h4>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActive(!active)}
+          className={`text-sm font-medium px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+            active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          {active ? "Aktif" : "Nonaktif"}
+        </button>
+      </div>
+
+      <div className="space-y-3 text-sm">
+        <p className="text-gray-500 text-xs">
+          Jika aktif, pegawai tidak akan bisa melakukan Absen Pulang (Check-out) sebelum jam shift mereka berakhir.
+        </p>
+        
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Batas Toleransi Pulang Awal
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={120}
+              value={toleranceMinutes}
+              onChange={(e) => setToleranceMinutes(Number(e.target.value))}
+              disabled={!active}
+              className="w-36 px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+            />
+            <span className="text-xs text-gray-500">Menit sebelum shift habis</span>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Contoh: Jika shift habis jam 17:00 dan toleransi 15 menit, maka absen pulang baru bisa dilakukan mulai jam 16:45. Set 0 untuk mengunci penuh.
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onSave({ toleranceMinutes }, active)}
+        disabled={saving}
+        className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-xs"
+      >
+        Simpan Aturan Absen Pulang
       </button>
     </div>
   );

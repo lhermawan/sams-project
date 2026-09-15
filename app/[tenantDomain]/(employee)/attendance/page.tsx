@@ -86,6 +86,9 @@ interface TodayStatus {
     pendingHandoverId?: string | null;
     minPhotos: number;
   };
+  earlyCheckoutRule?: {
+    toleranceMinutes: number;
+  } | null;
   periodicReportRule?: {
     hasPeriodicReports: boolean;
     intervalHours: number;
@@ -315,6 +318,26 @@ export default function AttendancePage() {
   const isAlreadyDone =
     !!todayStatus?.attendance?.checkInTime && !!todayStatus?.attendance?.checkOutTime;
   const schedule = todayStatus?.schedule;
+
+  let earlyCheckoutBlocked = false;
+  let earlyCheckoutMessage = "";
+  
+  if (attendanceType === "PULANG" && todayStatus?.earlyCheckoutRule && schedule?.endTime) {
+    const tolerance = todayStatus.earlyCheckoutRule.toleranceMinutes || 0;
+    const now = currentTime || new Date();
+    const [endH, endM] = schedule.endTime.split(":").map(Number);
+    const scheduledEnd = new Date(todayStatus?.attendance?.workDate || new Date());
+    scheduledEnd.setHours(endH, endM, 0, 0);
+    if (schedule.isCrossDay || schedule.is24Hours) {
+      scheduledEnd.setDate(scheduledEnd.getDate() + 1);
+    }
+    const earliestCheckout = new Date(scheduledEnd.getTime() - tolerance * 60000);
+    if (now < earliestCheckout) {
+      earlyCheckoutBlocked = true;
+      const t = earliestCheckout.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      earlyCheckoutMessage = `Terkunci: Belum waktunya pulang (Buka jam ${t})`;
+    }
+  }
 
   // Handover required check
   const requiresHandoverBeforeCheckIn =
@@ -825,6 +848,13 @@ export default function AttendancePage() {
                       </div>
                     </div>
 
+                    {earlyCheckoutBlocked && (
+                      <div className="bg-orange-50 border border-orange-200 text-orange-700 text-xs p-3 rounded-xl flex items-start gap-2">
+                        <Clock size={16} className="shrink-0 mt-0.5" />
+                        <span>{earlyCheckoutMessage}</span>
+                      </div>
+                    )}
+
                     {errorMsg && (
                       <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl">
                         {errorMsg}
@@ -833,8 +863,8 @@ export default function AttendancePage() {
 
                     <button
                       onClick={submitAttendance}
-                      disabled={submitState === "submitting"}
-                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base shadow-sm"
+                      disabled={submitState === "submitting" || earlyCheckoutBlocked}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 text-base shadow-sm transition-all"
                     >
                       {submitState === "submitting" ? (
                         <>
@@ -843,7 +873,7 @@ export default function AttendancePage() {
                         </>
                       ) : (
                         <>
-                          <CheckCircle size={18} />
+                          {earlyCheckoutBlocked ? <Clock size={18} /> : <CheckCircle size={18} />}
                           {attendanceType === "MASUK" ? "KIRIM ABSEN MASUK" : "KIRIM ABSEN PULANG"}
                         </>
                       )}

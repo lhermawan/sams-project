@@ -14,9 +14,9 @@ Berikut adalah fitur dan perbaikan yang perlu dikembangkan pada iterasi selanjut
    - Lakukan normalisasi pada seluruh akun email pengguna (user) menjadi standar domain `@5758inc.id`.
    - Pastikan proses otentikasi login dan pembuatan akun baru menyesuaikan dengan format email baru ini.
 
-3. **Validasi (Lock) Absen Pulang**
-   - Kunci (*lock*) tombol atau fitur Absen Pulang jika belum memasuki jam pulang yang telah dijadwalkan.
-   - Fitur ini untuk mencegah pegawai melakukan check-out terlalu awal dari jadwal shift/kerja yang seharusnya.
+3. [x] **Validasi (Lock) Absen Pulang:**
+   - **Konteks:** UI Pegawai.
+   - **Tugas:** Kunci (lock) tombol atau fitur Absen Pulang jika belum memasuki jam pulang yang telah dijadwalkan. Tombol "Absen Pulang" di halaman absensi pegawai akan otomatis disabled (abu-abu) atau memunculkan peringatan jika diklik sebelum waktunya, mencegah manipulasi jam kepulangan secara sepihak.
 4. **Ubah Istilah 'Tenant' menjadi 'Mitra'**
    - Lakukan refactor atau perubahan label pada antarmuka pengguna (UI) agar semua kata 'Tenant' diganti menjadi 'Mitra' untuk memberikan kesan yang lebih familiar.
 5. **Auto-Redirect Login dari Domain Utama**
