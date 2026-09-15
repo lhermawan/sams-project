@@ -17,3 +17,5 @@ Berikut adalah fitur dan perbaikan yang perlu dikembangkan pada iterasi selanjut
    - Fitur ini untuk mencegah pegawai melakukan check-out terlalu awal dari jadwal shift/kerja yang seharusnya.
 4. **Ubah Istilah 'Tenant' menjadi 'Mitra'**
    - Lakukan refactor atau perubahan label pada antarmuka pengguna (UI) agar semua kata 'Tenant' diganti menjadi 'Mitra' untuk memberikan kesan yang lebih familiar.
+5. **Auto-Redirect Login dari Domain Utama**
+   - Jika user (pegawai/admin mitra) melakukan login melalui domain utama (5758inc.my.id), sistem akan otomatis mencari di mana mitra mereka terdaftar dan langsung mengarahkan (redirect) ke subdomain mitra tersebut setelah login sukses (Single Sign-On experience).
