@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { User, Phone, MapPin, Building, Briefcase, Mail, LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -96,7 +96,10 @@ export default async function ProfilePage() {
             const headersList = await headers();
             const host = headersList.get("host") || "localhost:3000";
             const protocol = host.includes("localhost") ? "http" : "https";
-            await signOut({ redirectTo: `${protocol}://${host}/login` });
+            const cs = await cookies();
+            cs.set("authjs.session-token", "", { maxAge: 0, path: "/", domain: ".5758inc.my.id" });
+            cs.set("__Secure-authjs.session-token", "", { maxAge: 0, path: "/", domain: ".5758inc.my.id" });
+            await signOut({ redirectTo: protocol + "://" + host + "/login" });
           }}
         >
           <button
