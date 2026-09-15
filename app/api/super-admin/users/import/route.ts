@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     });
 
     const employeeTypeMap = new Map(employeeTypes.map(et => [et.code.toLowerCase(), et.id]));
-    const defaultPassword = await bcrypt.hash("Password@123", 10);
+    const defaultPassword = await bcrypt.hash("Pegawai@123", 10);
     
     let successCount = 0;
     

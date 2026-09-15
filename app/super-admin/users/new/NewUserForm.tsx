@@ -13,7 +13,7 @@ export default function NewUserForm({ tenants }: { tenants: any[] }) {
     tenantId: "",
     role: "ADMIN",
     email: "",
-    password: "Password@123", // Default password
+    password: "Pegawai@123", // Default password
     name: "",
     nip: "",
     department: "",
