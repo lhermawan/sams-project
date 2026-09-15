@@ -84,12 +84,27 @@ const nextAuth = NextAuth({
 
         let user;
 
-        if (tenantDomain === "super-admin" || !tenantDomain) {
+        if (tenantDomain === "super-admin" || !tenantDomain || tenantDomain === "app") {
           // Super admin login attempt
           user = await prisma.user.findFirst({
             where: { email, role: "SUPER_ADMIN" },
             include: { employee: true, tenant: true },
           });
+          
+          // Global search if user login from main domain
+          if (!user) {
+            user = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { email: email },
+                  { email: `${email}@5758inc.id` },
+                  { employee: { nip: email } },
+                ],
+                tenant: { isActive: true },
+              },
+              include: { employee: true, tenant: true },
+            });
+          }
         } else {
           // Tenant login attempt (case-insensitive for subdomain and email)
           const tenant = await prisma.tenant.findFirst({
