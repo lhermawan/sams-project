@@ -373,14 +373,14 @@ export default function ReportsPage() {
 
       // Table Columns:
       // 0: No (7mm)
-      // 1: Tgl & Shift (22mm)
-      // 2: Pegawai (38mm)
-      // 3: Masuk (16mm)
-      // 4: Foto Masuk (24mm)
-      // 5: Pulang (16mm)
-      // 6: Foto Pulang (24mm)
-      // 7: Uraian Kegiatan / Kinerja (104mm)
-      // 8: Foto Kegiatan (26mm)
+      // 1: Tgl & Shift (24mm)
+      // 2: Pegawai (40mm)
+      // 3: Masuk (18mm)
+      // 4: Pulang (18mm)
+      // 5: Uraian Kegiatan / Kinerja (98mm)
+      // 6: Foto Masuk (24mm)
+      // 7: Foto Pulang (24mm)
+      // 8: Foto Bukti Kegiatan (24mm)
       // Total = 277 mm (Margin left 10, right 10)
 
       autoTable(doc, {
@@ -392,10 +392,10 @@ export default function ReportsPage() {
             "Tanggal & Shift",
             "Pegawai",
             "Masuk",
-            "Foto Masuk",
             "Pulang",
-            "Foto Pulang",
             "Uraian Kegiatan / Kinerja Harian",
+            "Foto Masuk",
+            "Foto Pulang",
             "Foto Bukti",
           ],
         ],
@@ -404,24 +404,24 @@ export default function ReportsPage() {
           `${r.date}\n(${r.shift})`,
           `${r.name}\n${r.nip}\n${r.department}`,
           r.checkInTime !== "-" ? `${r.checkInTime}\n(${r.status})` : "-",
-          r.inImg ? "" : "-",
           r.checkOutTime !== "-" ? r.checkOutTime : "-",
-          r.outImg ? "" : "-",
           r.activityNotes && r.activityNotes !== "-"
             ? r.activityNotes
             : "Tidak ada catatan kegiatan",
+          r.inImg ? "" : "-",
+          r.outImg ? "" : "-",
           r.actImg ? "" : "-",
         ]),
         columnStyles: {
           0: { cellWidth: 7, halign: "center", valign: "middle" },
-          1: { cellWidth: 22, halign: "center", valign: "middle" },
-          2: { cellWidth: 38, valign: "middle" },
-          3: { cellWidth: 16, halign: "center", valign: "middle" },
-          4: { cellWidth: 24, halign: "center", valign: "middle" },
-          5: { cellWidth: 16, halign: "center", valign: "middle" },
+          1: { cellWidth: 24, halign: "center", valign: "middle" },
+          2: { cellWidth: 40, valign: "middle" },
+          3: { cellWidth: 18, halign: "center", valign: "middle" },
+          4: { cellWidth: 18, halign: "center", valign: "middle" },
+          5: { cellWidth: 98, valign: "middle" },
           6: { cellWidth: 24, halign: "center", valign: "middle" },
-          7: { cellWidth: 104, valign: "middle" },
-          8: { cellWidth: 26, halign: "center", valign: "middle" },
+          7: { cellWidth: 24, halign: "center", valign: "middle" },
+          8: { cellWidth: 24, halign: "center", valign: "middle" },
         },
         styles: {
           minCellHeight: 22,
@@ -446,8 +446,8 @@ export default function ReportsPage() {
             const rec = loadedRecords[data.row.index];
             if (!rec) return;
 
-            // Render Foto Masuk (Col index 4)
-            if (data.column.index === 4 && rec.inImg) {
+            // Render Foto Masuk (Col index 6)
+            if (data.column.index === 6 && rec.inImg) {
               try {
                 doc.addImage(
                   rec.inImg,
@@ -460,8 +460,8 @@ export default function ReportsPage() {
               } catch {}
             }
 
-            // Render Foto Pulang (Col index 6)
-            if (data.column.index === 6 && rec.outImg) {
+            // Render Foto Pulang (Col index 7)
+            if (data.column.index === 7 && rec.outImg) {
               try {
                 doc.addImage(
                   rec.outImg,
@@ -474,15 +474,15 @@ export default function ReportsPage() {
               } catch {}
             }
 
-            // Render Foto Kegiatan (Col index 8)
+            // Render Foto Bukti Kegiatan (Col index 8)
             if (data.column.index === 8 && rec.actImg) {
               try {
                 doc.addImage(
                   rec.actImg,
                   "JPEG",
-                  data.cell.x + (data.cell.width - 22) / 2,
+                  data.cell.x + (data.cell.width - 19) / 2,
                   data.cell.y + (data.cell.height - 19) / 2,
-                  22,
+                  19,
                   19
                 );
               } catch {}
