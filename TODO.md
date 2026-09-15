@@ -19,5 +19,5 @@ Berikut adalah fitur dan perbaikan yang perlu dikembangkan pada iterasi selanjut
    - **Tugas:** Kunci (lock) tombol atau fitur Absen Pulang jika belum memasuki jam pulang yang telah dijadwalkan. Tombol "Absen Pulang" di halaman absensi pegawai akan otomatis disabled (abu-abu) atau memunculkan peringatan jika diklik sebelum waktunya, mencegah manipulasi jam kepulangan secara sepihak.
 4. [x] **Ubah Istilah 'Tenant' menjadi 'Mitra':**
    - Lakukan refactor atau perubahan label pada antarmuka pengguna (UI) agar semua kata 'Tenant' diganti menjadi 'Mitra' untuk memberikan kesan yang lebih familiar.
-5. **Auto-Redirect Login dari Domain Utama**
+5. [x] **Auto-Redirect Login dari Domain Utama:**
    - Jika user (pegawai/admin mitra) melakukan login melalui domain utama (5758inc.my.id), sistem akan otomatis mencari di mana mitra mereka terdaftar dan langsung mengarahkan (redirect) ke subdomain mitra tersebut setelah login sukses (Single Sign-On experience).
