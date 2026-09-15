@@ -9,6 +9,18 @@ const AUTH_SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "s
 const nextAuth = NextAuth({
   trustHost: true,
   useSecureCookies: false,
+    cookies: {
+      sessionToken: {
+        name: "authjs.session-token",
+        options: {
+          httpOnly: true,
+          sameSite: "lax",
+          path: "/",
+          domain: process.env.NODE_ENV === "production" ? ".5758inc.my.id" : ".localhost",
+          secure: false,
+        },
+      },
+    },
   secret: AUTH_SECRET,
   providers: [
     CredentialsProvider({
