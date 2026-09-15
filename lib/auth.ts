@@ -107,7 +107,8 @@ const nextAuth = NextAuth({
               tenantId: tenant.id,
               OR: [
                 { email: email },
-                { email: `${email}@${tenant.subdomain}.5758inc.my.id` },
+                { email: `${email}@5758inc.id` }, // Support the new standardized email
+                { email: `${email}@${tenant.subdomain}.5758inc.my.id` }, // Legacy support
                 { employee: { nip: email } },
               ],
             },

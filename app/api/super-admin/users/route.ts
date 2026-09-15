@@ -10,10 +10,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { email, password, tenantId, role } = await req.json();
+    const body = await req.json();
+    const { email, password, tenantId, role, name, nip, department, position, employeeTypeId } = body;
 
     if (!email || !password || !tenantId) {
       return NextResponse.json({ error: "Email, password, and tenant are required" }, { status: 400 });
+    }
+
+    if (role === "EMPLOYEE") {
+      if (!name || !nip || !department || !position || !employeeTypeId) {
+        return NextResponse.json({ error: "Semua data profil pegawai wajib diisi" }, { status: 400 });
+      }
     }
 
     // Check if user already exists in this tenant
@@ -22,20 +29,43 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Email sudah digunakan di tenant ini" }, { status: 400 });
+      return NextResponse.json({ error: "Email/Username sudah digunakan di mitra ini" }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        email: email.trim().toLowerCase(),
-        password: hashedPassword,
-        tenantId,
-        role: role || "ADMIN",
-        isActive: true,
-      }
-    });
+    let user;
+    if (role === "EMPLOYEE") {
+      user = await prisma.user.create({
+        data: {
+          email: email.trim().toLowerCase(),
+          password: hashedPassword,
+          tenantId,
+          role: "EMPLOYEE",
+          isActive: true,
+          employee: {
+            create: {
+              name,
+              nip,
+              department,
+              position,
+              employeeTypeId,
+              isActive: true,
+            }
+          }
+        }
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: email.trim().toLowerCase(),
+          password: hashedPassword,
+          tenantId,
+          role: role || "ADMIN",
+          isActive: true,
+        }
+      });
+    }
 
     return NextResponse.json({ success: true, user: { id: user.id, email: user.email } }, { status: 201 });
   } catch (error: any) {

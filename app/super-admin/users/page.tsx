@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import UserTable from "@/components/super-admin/UserTable";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, FileUp } from "lucide-react";
+import NormalizeEmailsButton from "./NormalizeEmailsButton";
 
 export default async function UsersPage() {
   const session = await auth();
@@ -46,13 +47,23 @@ export default async function UsersPage() {
               Kelola seluruh akun Admin, Pegawai, dan Super Admin di semua tenant perusahaan.
             </p>
           </div>
-          <Link
-            href="/users/new"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors shadow-xs cursor-pointer w-fit"
-          >
-            <Plus size={16} />
-            Tambah User Baru
-          </Link>
+          <div className="flex items-center gap-2">
+            <NormalizeEmailsButton />
+            <Link
+              href="/super-admin/users/import"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium text-sm transition-colors shadow-sm cursor-pointer w-fit"
+            >
+              <FileUp size={16} />
+              Import Massal
+            </Link>
+            <Link
+              href="/super-admin/users/new"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors shadow-xs cursor-pointer w-fit"
+            >
+              <Plus size={16} />
+              Tambah User Baru
+            </Link>
+          </div>
         </div>
 
         <UserTable initialUsers={users} tenants={tenants} currentUserId={session.user.id} />
@@ -60,3 +71,4 @@ export default async function UsersPage() {
     </div>
   );
 }
+

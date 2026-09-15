@@ -4,11 +4,13 @@
 
 Berikut adalah fitur dan perbaikan yang perlu dikembangkan pada iterasi selanjutnya:
 
-1. **Fitur Export & Import User (Super Admin)**
-   - Buat menu khusus di dashboard Super Admin untuk melakukan *Export* dan *Import* data pengguna (User).
-   - Fitur *Export* juga berfungsi untuk mengunduh template/contoh format data CSV/Excel yang nantinya digunakan sebagai standar saat melakukan *Import* data secara massal.
+1. **[SELESAI] Fitur Pembuatan & Manajemen Pegawai oleh Super Admin (Single & Bulk Import)**
+   - Buat antarmuka dan API di dashboard Super Admin untuk membuat akun Pegawai (`EMPLOYEE`) lengkap beserta profilnya (Nama Lengkap, NIP, Bagian, Jabatan, dan Jenis Pegawai) ke mitra/tenant yang dipilih.
+   - Dukung pembuatan **Username login** yang praktis (otomatis disugesti dari nama pegawai, terstandarisasi dengan domain `@5758inc.id`, dan password default yang fleksibel).
+   - Sediakan fitur **Import Massal (Excel/CSV)** khusus Super Admin agar onboarding pegawai untuk mitra baru bisa dilakukan secara instan lengkap dengan template unduhan.
+   - Tampilkan informasi akun dan kredensial login pegawai di panel Super Admin untuk memudahkan audit akun mitra.
 
-2. **Normalisasi Email Pengguna**
+2. **[SELESAI] Normalisasi Email Pengguna**
    - Lakukan normalisasi pada seluruh akun email pengguna (user) menjadi standar domain `@5758inc.id`.
    - Pastikan proses otentikasi login dan pembuatan akun baru menyesuaikan dengan format email baru ini.
 
