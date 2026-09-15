@@ -52,7 +52,7 @@ export default async function SuperAdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-500 text-sm">Total Tenants</h3>
+              <h3 className="font-semibold text-gray-500 text-sm">Total Mitra</h3>
               <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
                 <Building2 size={20} />
               </div>
@@ -62,7 +62,7 @@ export default async function SuperAdminDashboard() {
 
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-500 text-sm">Tenants Aktif</h3>
+              <h3 className="font-semibold text-gray-500 text-sm">Mitra Aktif</h3>
               <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
                 <Activity size={20} />
               </div>
