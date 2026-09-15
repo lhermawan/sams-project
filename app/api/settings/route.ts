@@ -93,12 +93,32 @@ export async function PUT(req: NextRequest) {
         const lat = parseFloat(body.office_lat);
         const lng = parseFloat(body.office_lng);
         const radius = parseInt(body.attendance_radius ?? "100") || 100;
+        const tenantId = session!.user.tenantId;
 
-        await prisma.officeLocation.updateMany({
-          where: { isActive: true },
-          data: { latitude: lat, longitude: lng, radius },
+        const existingOffice = await prisma.officeLocation.findFirst({
+          where: { tenantId, isActive: true },
         });
-      } catch {}
+
+        if (existingOffice) {
+          await prisma.officeLocation.update({
+            where: { id: existingOffice.id },
+            data: { latitude: lat, longitude: lng, radius },
+          });
+        } else {
+          await prisma.officeLocation.create({
+            data: {
+              tenantId,
+              latitude: lat,
+              longitude: lng,
+              radius,
+              name: "Kantor Pusat",
+              isActive: true,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to update office location", err);
+      }
     }
 
     try {
