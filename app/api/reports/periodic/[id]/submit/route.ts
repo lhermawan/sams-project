@@ -20,9 +20,10 @@ export async function POST(
     const { latitude, longitude, notes, photos } = await req.json();
 
     const report = await prisma.periodicReport.findFirst({
-      where: { id,
-          tenantId: session.user.tenantId
-    },
+      where: {
+        id,
+        tenantId: session.user.tenantId,
+      },
       include: {
         attendance: {
           include: {
@@ -42,32 +43,46 @@ export async function POST(
 
     if (!report || report.employeeId !== session.user.employeeId) {
       return NextResponse.json(
-        { error: "Laporan patroli tidak ditemukan atau bukan milik Anda." },
+        { error: "Laporan kegiatan tidak ditemukan atau bukan milik Anda." },
         { status: 404 }
       );
     }
 
     if (report.status === "SUBMITTED") {
       return NextResponse.json(
-        { error: "Laporan checkpoint patroli ini sudah pernah dikirimkan sebelumnya." },
+        { error: "Laporan ini sudah pernah dikirimkan sebelumnya." },
         { status: 400 }
       );
     }
 
     // Get minPhotos from rule config
     const rule = report.attendance.employee.employeeType?.rules[0];
-    let minPhotos = 3;
+    const isNonShift =
+      report.attendance.employee.employeeType?.scheduleType === "NON_SHIFT" ||
+      !report.attendance.shiftId;
+    let minPhotos = isNonShift ? 1 : 3;
+    let reportLabel = isNonShift ? "Laporan Kinerja Harian" : "Laporan Patroli";
+
     if (rule) {
       try {
         const config = JSON.parse(rule.configuration);
-        minPhotos = config.minPhotos ?? 3;
+        if (config.minPhotos !== undefined) minPhotos = config.minPhotos;
+        if (config.label) reportLabel = config.label;
+        if (config.requirePhoto === false) minPhotos = 0;
       } catch {}
     }
 
-    if (!Array.isArray(photos) || photos.length < minPhotos) {
+    if (isNonShift && (!notes || notes.trim().length < 5)) {
+      return NextResponse.json(
+        { error: "Wajib mengisi uraian pekerjaan / kegiatan yang dikerjakan hari ini (minimal 5 karakter)." },
+        { status: 422 }
+      );
+    }
+
+    if (minPhotos > 0 && (!Array.isArray(photos) || photos.length < minPhotos)) {
       return NextResponse.json(
         {
-          error: `Wajib melampirkan minimal ${minPhotos} foto bukti patroli pos/lingkungan. Anda melampirkan ${photos?.length || 0} foto.`,
+          error: `Wajib melampirkan minimal ${minPhotos} foto bukti ${reportLabel}. Anda melampirkan ${photos?.length || 0} foto.`,
         },
         { status: 422 }
       );
@@ -77,9 +92,12 @@ export async function POST(
 
     // Check distance if office location is configured
     let distanceMeters = 0;
-    const office = await prisma.officeLocation.findFirst({ where: { isActive: true,
-        tenantId: session.user.tenantId
-    } });
+    const office = await prisma.officeLocation.findFirst({
+      where: {
+        isActive: true,
+        tenantId: session.user.tenantId,
+      },
+    });
     if (office && latitude && longitude) {
       const val = isWithinRadius(latitude, longitude, office.latitude, office.longitude, office.radius);
       distanceMeters = val.distance;
@@ -93,30 +111,32 @@ export async function POST(
 
     const savedPhotosData: { photoUrl: string; fileHash: string; fileSizeBytes: number }[] = [];
 
-    for (let i = 0; i < photos.length; i++) {
-      const photoStr = photos[i];
-      let photoUrl = photoStr;
-      let hash = "";
-      let size = 0;
+    if (Array.isArray(photos)) {
+      for (let i = 0; i < photos.length; i++) {
+        const photoStr = photos[i];
+        let photoUrl = photoStr;
+        let hash = "";
+        let size = 0;
 
-      if (typeof photoStr === "string" && photoStr.startsWith("data:image")) {
-        const base64Data = photoStr.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, "base64");
-        hash = crypto.createHash("sha256").update(buffer).digest("hex");
-        size = buffer.length;
-        const filename = `patrol_${report.id}_${Date.now()}_${i + 1}.jpg`;
-        await writeFile(join(uploadDir, filename), buffer);
-        photoUrl = `/uploads/attendance/${filename}`;
-      } else {
-        hash = crypto.createHash("sha256").update(photoStr).digest("hex");
-        size = 1000;
+        if (typeof photoStr === "string" && photoStr.startsWith("data:image")) {
+          const base64Data = photoStr.replace(/^data:image\/\w+;base64,/, "");
+          const buffer = Buffer.from(base64Data, "base64");
+          hash = crypto.createHash("sha256").update(buffer).digest("hex");
+          size = buffer.length;
+          const filename = `activity_${report.id}_${Date.now()}_${i + 1}.jpg`;
+          await writeFile(join(uploadDir, filename), buffer);
+          photoUrl = `/uploads/attendance/${filename}`;
+        } else {
+          hash = crypto.createHash("sha256").update(photoStr).digest("hex");
+          size = 1000;
+        }
+
+        savedPhotosData.push({
+          photoUrl,
+          fileHash: hash,
+          fileSizeBytes: size,
+        });
       }
-
-      savedPhotosData.push({
-        photoUrl,
-        fileHash: hash,
-        fileSizeBytes: size,
-      });
     }
 
     // Determine status (SUBMITTED or LATE)
@@ -124,9 +144,10 @@ export async function POST(
     const newStatus = isLate ? "LATE" : "SUBMITTED";
 
     const updated = await prisma.periodicReport.update({
-      where: { id: report.id,
-          tenantId: session.user.tenantId
-    },
+      where: {
+        id: report.id,
+        tenantId: session.user.tenantId,
+      },
       data: {
         submittedAt: now,
         latitude: latitude || null,
@@ -142,8 +163,7 @@ export async function POST(
             mimeType: "image/jpeg",
           })),
         },
-          tenantId: session.user.tenantId
-    },
+      },
       include: {
         photos: true,
       },
@@ -163,15 +183,19 @@ export async function POST(
           submittedAt: now,
         }),
         ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
-          tenantId: session.user.tenantId
-    },
+        tenantId: session.user.tenantId,
+      },
     });
+
+    const successMessage = isNonShift
+      ? "Laporan Kinerja Harian berhasil disimpan."
+      : isLate
+      ? `Laporan checkpoint ke-${updated.checkpointSequence} berhasil dikirim (Status: Terlambat).`
+      : `Laporan checkpoint ke-${updated.checkpointSequence} berhasil diverifikasi tepat waktu.`;
 
     return NextResponse.json({
       success: true,
-      message: isLate
-        ? `Laporan checkpoint ke-${updated.checkpointSequence} berhasil dikirim (Status: Terlambat).`
-        : `Laporan checkpoint ke-${updated.checkpointSequence} berhasil diverifikasi tepat waktu.`,
+      message: successMessage,
       data: {
         id: updated.id,
         checkpointSequence: updated.checkpointSequence,

@@ -114,6 +114,21 @@ export async function GET() {
       } catch {
         periodicReportConfig = {};
       }
+
+      // Auto-generate if not yet generated for this active attendance
+      if (
+        attendance &&
+        (!attendance.periodicReports || attendance.periodicReports.length === 0) &&
+        !attendance.checkOutTime
+      ) {
+        const { PeriodicReportGenerator } = await import("@/lib/engine/periodic-report-generator");
+        await PeriodicReportGenerator.generateForAttendance(attendance.id);
+        attendance.periodicReports = await prisma.periodicReport.findMany({
+          where: { attendanceId: attendance.id },
+          include: { photos: true },
+          orderBy: { checkpointSequence: "asc" },
+        });
+      }
     }
 
     // 5. Build Response
@@ -181,7 +196,18 @@ export async function GET() {
         periodicReportRule: {
           hasPeriodicReports: !!reportRule,
           intervalHours: periodicReportConfig.intervalHours ?? 4,
-          minPhotos: periodicReportConfig.minPhotos ?? 3,
+          minPhotos: periodicReportConfig.minPhotos ?? (employee.employeeType.scheduleType === "NON_SHIFT" ? 1 : 3),
+          label:
+            periodicReportConfig.label ||
+            (employee.employeeType.scheduleType === "SHIFT"
+              ? "Laporan Patroli"
+              : "Laporan Kinerja Harian"),
+          requirePhoto: periodicReportConfig.requirePhoto !== false,
+          checkoutAction:
+            periodicReportConfig.checkoutAction ??
+            (employee.employeeType.scheduleType === "NON_SHIFT"
+              ? "BLOCK"
+              : "ALLOW_WITH_INCOMPLETE_STATUS"),
         },
         type,
       },

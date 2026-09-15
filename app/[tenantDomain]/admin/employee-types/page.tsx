@@ -762,19 +762,23 @@ function HandoverRuleCard({ typeId, initialConfig, isActive, onSave, saving }: a
 // Subcomponent: Periodic Report Rule Card
 function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, saving }: any) {
   const [active, setActive] = useState(isActive ?? false);
+  const [label, setLabel] = useState(initialConfig.label ?? "");
+  const [requirePhoto, setRequirePhoto] = useState(initialConfig.requirePhoto !== false);
   const [intervalHours, setIntervalHours] = useState(initialConfig.intervalHours ?? 4);
   const [toleranceBeforeMin, setToleranceBeforeMin] = useState(initialConfig.toleranceBeforeMin ?? 30);
   const [toleranceAfterMin, setToleranceAfterMin] = useState(initialConfig.toleranceAfterMin ?? 30);
-  const [minPhotos, setMinPhotos] = useState(initialConfig.minPhotos ?? 3);
-  const [checkoutAction, setCheckoutAction] = useState(initialConfig.checkoutAction ?? "ALLOW_WITH_INCOMPLETE_STATUS");
+  const [minPhotos, setMinPhotos] = useState(initialConfig.minPhotos ?? 1);
+  const [checkoutAction, setCheckoutAction] = useState(initialConfig.checkoutAction ?? "BLOCK");
 
   useEffect(() => {
     setActive(isActive ?? false);
+    setLabel(initialConfig.label ?? "");
+    setRequirePhoto(initialConfig.requirePhoto !== false);
     setIntervalHours(initialConfig.intervalHours ?? 4);
     setToleranceBeforeMin(initialConfig.toleranceBeforeMin ?? 30);
     setToleranceAfterMin(initialConfig.toleranceAfterMin ?? 30);
-    setMinPhotos(initialConfig.minPhotos ?? 3);
-    setCheckoutAction(initialConfig.checkoutAction ?? "ALLOW_WITH_INCOMPLETE_STATUS");
+    setMinPhotos(initialConfig.minPhotos ?? 1);
+    setCheckoutAction(initialConfig.checkoutAction ?? "BLOCK");
   }, [initialConfig, isActive]);
 
   return (
@@ -782,7 +786,7 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
       <div className="flex items-center justify-between border-b border-gray-100 pb-3">
         <div className="flex items-center gap-2">
           <Camera className="text-purple-600" size={20} />
-          <h4 className="font-bold text-gray-900">Aturan Patroli Berkala (Periodic Report)</h4>
+          <h4 className="font-bold text-gray-900">Aturan Laporan Kegiatan & Kinerja</h4>
         </div>
         <button
           type="button"
@@ -796,9 +800,28 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
       </div>
 
       <div className="space-y-3 text-sm">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Nama / Label Laporan
+          </label>
+          <input
+            type="text"
+            placeholder="Contoh: Laporan Kinerja Harian atau Laporan Patroli"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            disabled={!active}
+            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Kosongkan untuk menggunakan default sistem sesuai tipe shift/non-shift.
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Interval Patroli</label>
+            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+              Interval (Khusus Shift)
+            </label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -813,15 +836,17 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Minimal Foto Bukti</label>
+            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+              Minimal Foto Bukti
+            </label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={10}
                 value={minPhotos}
                 onChange={(e) => setMinPhotos(Number(e.target.value))}
-                disabled={!active}
+                disabled={!active || !requirePhoto}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
               />
               <span className="text-xs text-gray-500">Foto</span>
@@ -829,41 +854,36 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Toleransi Sebelum</label>
-            <input
-              type="number"
-              value={toleranceBeforeMin}
-              onChange={(e) => setToleranceBeforeMin(Number(e.target.value))}
-              disabled={!active}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Toleransi Sesudah</label>
-            <input
-              type="number"
-              value={toleranceAfterMin}
-              onChange={(e) => setToleranceAfterMin(Number(e.target.value))}
-              disabled={!active}
-              className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="checkbox"
+            id={`requirePhoto_${typeId}`}
+            checked={requirePhoto}
+            onChange={(e) => setRequirePhoto(e.target.checked)}
+            disabled={!active}
+            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+          <label htmlFor={`requirePhoto_${typeId}`} className="text-xs font-medium text-gray-700">
+            Wajib Melampirkan Foto Bukti Dokumentasi Kegiatan
+          </label>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Tindakan Saat Check-Out</label>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Tindakan Saat Check-Out (Absen Pulang)
+          </label>
           <select
             value={checkoutAction}
             onChange={(e) => setCheckoutAction(e.target.value)}
             disabled={!active}
             className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
           >
-            <option value="ALLOW_WITH_INCOMPLETE_STATUS">
-              Izinkan Check-Out tapi Tandai Status INCOMPLETE (Rekomendasi)
+            <option value="BLOCK">
+              Wajib Selesai: Blokir Check-Out Sampai Laporan Diisi
             </option>
-            <option value="BLOCK">Blokir Check-Out Sampai Semua Patroli Selesai</option>
+            <option value="ALLOW_WITH_INCOMPLETE_STATUS">
+              Izinkan Check-Out tapi Tandai Status INCOMPLETE (Tidak Lengkap)
+            </option>
           </select>
         </div>
       </div>
@@ -873,10 +893,12 @@ function PeriodicReportRuleCard({ typeId, initialConfig, isActive, onSave, savin
         onClick={() =>
           onSave(
             {
+              label: label.trim() || undefined,
+              requirePhoto,
               intervalHours,
               toleranceBeforeMin,
               toleranceAfterMin,
-              minPhotos,
+              minPhotos: requirePhoto ? minPhotos : 0,
               checkoutAction,
             },
             active

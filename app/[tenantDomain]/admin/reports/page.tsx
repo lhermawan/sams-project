@@ -307,49 +307,204 @@ export default function ReportsPage() {
       const { jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
 
-      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      // Helper to load image as base64 data URL
+      const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+        if (!url) return null;
+        if (url.startsWith("data:image/")) return url;
+        try {
+          const imgRes = await fetch(url);
+          if (!imgRes.ok) return null;
+          const blob = await imgRes.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        } catch {
+          return null;
+        }
+      };
 
-      // Title
-      doc.setFontSize(15);
-      doc.setFont("helvetica", "bold");
-      doc.text(pdfData.title, doc.internal.pageSize.width / 2, 16, { align: "center" });
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Periode: ${pdfData.period}`, doc.internal.pageSize.width / 2, 23, { align: "center" });
-      doc.text(`Bagian: ${pdfData.department}`, doc.internal.pageSize.width / 2, 29, { align: "center" });
-      doc.text(`Digenerate: ${pdfData.generatedAt}`, doc.internal.pageSize.width / 2, 35, { align: "center" });
-
-      // Summary Box
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.text("Ringkasan Kehadiran:", 14, 43);
-      doc.setFont("helvetica", "normal");
-      doc.text(
-        `Total: ${pdfData.summary.total} | Hadir: ${pdfData.summary.valid} | Terlambat: ${pdfData.summary.late} | Telat Harian: ${pdfData.summary.todayLateMinutes ?? 0} mnt | Telat Mingguan: ${pdfData.summary.weeklyLateMinutes ?? 0} mnt | Telat Bulanan: ${pdfData.summary.monthlyLateMinutes ?? pdfData.summary.totalLateMinutes} mnt`,
-        14,
-        48
+      // Preload photos
+      const recordsToProcess = pdfData.records || [];
+      const loadedRecords = await Promise.all(
+        recordsToProcess.map(async (rec: any) => {
+          const [inImg, outImg, actImg] = await Promise.all([
+            rec.checkInPhoto ? loadImageAsBase64(rec.checkInPhoto) : Promise.resolve(null),
+            rec.checkOutPhoto ? loadImageAsBase64(rec.checkOutPhoto) : Promise.resolve(null),
+            rec.activityPhoto ? loadImageAsBase64(rec.activityPhoto) : Promise.resolve(null),
+          ]);
+          return {
+            ...rec,
+            inImg,
+            outImg,
+            actImg,
+          };
+        })
       );
 
-      // Table
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.width; // 297 mm
+
+      // Header Brand
+      doc.setFontSize(15);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 58, 138); // Dark blue
+      doc.text(pdfData.title, pageWidth / 2, 14, { align: "center" });
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(75, 85, 99); // Gray
+      doc.text(`Periode: ${pdfData.period}   |   Bagian: ${pdfData.department}`, pageWidth / 2, 20, { align: "center" });
+      doc.text(`Digenerate pada: ${pdfData.generatedAt}`, pageWidth / 2, 25, { align: "center" });
+
+      // Summary Bar
+      doc.setFillColor(243, 244, 246);
+      doc.roundedRect(12, 28, pageWidth - 24, 10, 2, 2, "F");
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(31, 41, 55);
+      doc.text(
+        `Total Kehadiran: ${pdfData.summary.total}   |   Hadir Tepat Waktu: ${pdfData.summary.valid}   |   Terlambat: ${pdfData.summary.late}   |   Tidak Hadir: ${pdfData.summary.absent}   |   Total Telat: ${pdfData.summary.totalLateMinutes ?? 0} Menit`,
+        16,
+        34.5
+      );
+
+      // Table Columns:
+      // 0: No (7mm)
+      // 1: Tgl & Shift (22mm)
+      // 2: Pegawai (38mm)
+      // 3: Masuk (16mm)
+      // 4: Foto Masuk (24mm)
+      // 5: Pulang (16mm)
+      // 6: Foto Pulang (24mm)
+      // 7: Uraian Kegiatan / Kinerja (104mm)
+      // 8: Foto Kegiatan (26mm)
+      // Total = 277 mm (Margin left 10, right 10)
+
       autoTable(doc, {
-        startY: 52,
-        head: [["No", "ID Pegawai", "Nama Pegawai", "Bagian", "Tanggal", "Masuk", "Pulang", "Status", "Telat"]],
-        body: pdfData.rows,
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", fontSize: 8 },
-        bodyStyles: { fontSize: 8 },
-        alternateRowStyles: { fillColor: [249, 250, 251] },
-        didParseCell: (data: any) => {
-          const statusIdx = 7;
-          if (data.section === "body" && data.column.index === statusIdx) {
-            const val = String(data.cell.raw ?? "");
-            if (val === "Terlambat") data.cell.styles.fillColor = [254, 215, 170];
-            if (val === "Tidak Hadir" || val === "Ditolak") data.cell.styles.fillColor = [254, 202, 202];
-            if (val === "Hadir") data.cell.styles.fillColor = [187, 247, 208];
+        startY: 42,
+        margin: { left: 10, right: 10, bottom: 12 },
+        head: [
+          [
+            "No",
+            "Tanggal & Shift",
+            "Pegawai",
+            "Masuk",
+            "Foto Masuk",
+            "Pulang",
+            "Foto Pulang",
+            "Uraian Kegiatan / Kinerja Harian",
+            "Foto Bukti",
+          ],
+        ],
+        body: loadedRecords.map((r: any) => [
+          r.no,
+          `${r.date}\n(${r.shift})`,
+          `${r.name}\n${r.nip}\n${r.department}`,
+          r.checkInTime !== "-" ? `${r.checkInTime}\n(${r.status})` : "-",
+          r.inImg ? "" : "-",
+          r.checkOutTime !== "-" ? r.checkOutTime : "-",
+          r.outImg ? "" : "-",
+          r.activityNotes && r.activityNotes !== "-"
+            ? r.activityNotes
+            : "Tidak ada catatan kegiatan",
+          r.actImg ? "" : "-",
+        ]),
+        columnStyles: {
+          0: { cellWidth: 7, halign: "center", valign: "middle" },
+          1: { cellWidth: 22, halign: "center", valign: "middle" },
+          2: { cellWidth: 38, valign: "middle" },
+          3: { cellWidth: 16, halign: "center", valign: "middle" },
+          4: { cellWidth: 24, halign: "center", valign: "middle" },
+          5: { cellWidth: 16, halign: "center", valign: "middle" },
+          6: { cellWidth: 24, halign: "center", valign: "middle" },
+          7: { cellWidth: 104, valign: "middle" },
+          8: { cellWidth: 26, halign: "center", valign: "middle" },
+        },
+        styles: {
+          minCellHeight: 22,
+          fontSize: 7.5,
+          cellPadding: 1.5,
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 8,
+          halign: "center",
+          valign: "middle",
+          minCellHeight: 9,
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251],
+        },
+        didDrawCell: (data: any) => {
+          if (data.section === "body") {
+            const rec = loadedRecords[data.row.index];
+            if (!rec) return;
+
+            // Render Foto Masuk (Col index 4)
+            if (data.column.index === 4 && rec.inImg) {
+              try {
+                doc.addImage(
+                  rec.inImg,
+                  "JPEG",
+                  data.cell.x + (data.cell.width - 19) / 2,
+                  data.cell.y + (data.cell.height - 19) / 2,
+                  19,
+                  19
+                );
+              } catch {}
+            }
+
+            // Render Foto Pulang (Col index 6)
+            if (data.column.index === 6 && rec.outImg) {
+              try {
+                doc.addImage(
+                  rec.outImg,
+                  "JPEG",
+                  data.cell.x + (data.cell.width - 19) / 2,
+                  data.cell.y + (data.cell.height - 19) / 2,
+                  19,
+                  19
+                );
+              } catch {}
+            }
+
+            // Render Foto Kegiatan (Col index 8)
+            if (data.column.index === 8 && rec.actImg) {
+              try {
+                doc.addImage(
+                  rec.actImg,
+                  "JPEG",
+                  data.cell.x + (data.cell.width - 22) / 2,
+                  data.cell.y + (data.cell.height - 19) / 2,
+                  22,
+                  19
+                );
+              } catch {}
+            }
           }
         },
-        margin: { left: 14, right: 14 },
       });
+
+      // Page numbers footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(156, 163, 175);
+        doc.text(
+          `5758 Attendance System  •  Halaman ${p} dari ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.height - 6,
+          { align: "center" }
+        );
+      }
 
       let pdfFilename = `laporan_absensi_${from}_${to}.pdf`;
       if (reportType === "department" && department) {
@@ -361,6 +516,7 @@ export default function ReportsPage() {
       doc.save(pdfFilename);
     } catch (err) {
       console.error("PDF export error:", err);
+      alert("Gagal mengunduh PDF. Pastikan data laporan tersedia.");
     } finally {
       setExporting(null);
     }

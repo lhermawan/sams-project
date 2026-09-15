@@ -1,4 +1,4 @@
-# Rencana Pengembangan SAMS (5758 Attendance System)
+# Rencana Pengembangan 5758 (5758 Attendance System)
 
 ## Daftar Tugas (TODO) Mendatang
 

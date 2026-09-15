@@ -22,7 +22,15 @@ export class PeriodicReportGenerator {
       },
     });
 
-    if (!attendance || !attendance.shift || !attendance.employee.employeeType) {
+    if (!attendance || !attendance.employee?.employeeType) {
+      return 0;
+    }
+
+    // Check if reports are already generated for this attendance session
+    const existing = await prisma.periodicReport.count({
+      where: { attendanceId: attendance.id },
+    });
+    if (existing > 0) {
       return 0;
     }
 
@@ -35,6 +43,43 @@ export class PeriodicReportGenerator {
     try {
       config = JSON.parse(rule.configuration);
     } catch {
+      return 0;
+    }
+
+    const isNonShift =
+      attendance.employee.employeeType.scheduleType === "NON_SHIFT" ||
+      !attendance.shift;
+
+    if (isNonShift) {
+      // Non-Shift: 1 Daily Performance / Activity Report
+      const baseDate = new Date(attendance.workDate || attendance.date);
+      const scheduledAt = new Date(baseDate);
+      scheduledAt.setHours(17, 0, 0, 0);
+
+      // Tolerance starts when checked in, ends at end of day
+      const toleranceStartAt = attendance.checkInTime
+        ? new Date(attendance.checkInTime)
+        : new Date(new Date(baseDate).setHours(6, 0, 0, 0));
+
+      const toleranceEndAt = new Date(baseDate);
+      toleranceEndAt.setHours(23, 59, 59, 999);
+
+      await prisma.periodicReport.create({
+        data: {
+          tenantId: attendance.tenantId,
+          attendanceId: attendance.id,
+          employeeId: attendance.employeeId,
+          checkpointSequence: 1,
+          scheduledAt,
+          toleranceStartAt,
+          toleranceEndAt,
+          status: "PENDING",
+        },
+      });
+      return 1;
+    }
+
+    if (!attendance.shift) {
       return 0;
     }
 

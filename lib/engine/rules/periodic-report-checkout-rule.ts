@@ -30,12 +30,21 @@ export class PeriodicReportCheckoutRule implements AttendanceRuleContract {
     });
 
     if (incompleteReports.length > 0) {
+      const reportLabel =
+        configuration.label ||
+        (context.shift ? "Laporan Patroli" : "Laporan Kinerja Harian");
+
       if (checkoutAction === "BLOCK") {
+        const countText =
+          incompleteReports.length > 1
+            ? `Terdapat ${incompleteReports.length} ${reportLabel} yang belum Anda selesaikan.`
+            : `Anda belum menyelesaikan ${reportLabel} hari ini. Silakan isi laporan sebelum absen pulang.`;
+
         return {
           isPassed: false,
           isBlocking: true,
-          message: `Check-out tidak diizinkan. Terdapat ${incompleteReports.length} laporan patroli yang belum Anda selesaikan.`,
-          details: { incompleteCount: incompleteReports.length },
+          message: `Check-out tidak diizinkan. ${countText}`,
+          details: { incompleteCount: incompleteReports.length, reportLabel },
         };
       } else {
         // ALLOW_WITH_INCOMPLETE_STATUS
@@ -44,7 +53,8 @@ export class PeriodicReportCheckoutRule implements AttendanceRuleContract {
           details: {
             markIncomplete: true,
             incompleteCount: incompleteReports.length,
-            reason: `Absen pulang disetujui namun terdapat ${incompleteReports.length} laporan patroli yang tidak diselesaikan.`,
+            reportLabel,
+            reason: `Absen pulang disetujui namun terdapat ${incompleteReports.length} ${reportLabel} yang tidak diselesaikan.`,
           },
         };
       }

@@ -25,6 +25,7 @@ import {
   Trash2,
   Send,
   X,
+  Upload,
 } from "lucide-react";
 import { haversineDistance } from "@/lib/geolocation";
 import { cn } from "@/lib/utils";
@@ -35,17 +36,20 @@ type AttendanceType = "MASUK" | "PULANG";
 type SubmitState = "idle" | "capturing" | "submitting" | "success" | "error";
 
 interface OfficeInfo {
+  name: string;
   latitude: number;
   longitude: number;
   radius: number;
-  name: string;
 }
 
 interface ScheduleInfo {
   name: string;
   startTime: string;
   endTime: string;
-  toleranceMin?: number;
+  isWorkDay: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
+  isDayOff?: boolean;
   isCrossDay?: boolean;
   is24Hours?: boolean;
 }
@@ -56,14 +60,15 @@ interface PeriodicReportItem {
   scheduledAt: string;
   toleranceStartAt: string;
   toleranceEndAt: string;
-  submittedAt: string | null;
-  status: "PENDING" | "SUBMITTED" | "LATE" | "MISSED";
-  reportNotes?: string | null;
+  submittedAt?: string | null;
+  status: "PENDING" | "SUBMITTED" | "LATE" | "MISSED" | "REJECTED";
   photos?: any[];
 }
 
 interface TodayStatus {
   employee?: any;
+  hasCheckedIn: boolean;
+  hasCheckedOut: boolean;
   checkInTime?: string | null;
   checkOutTime?: string | null;
   checkInPhoto?: string | null;
@@ -85,6 +90,9 @@ interface TodayStatus {
     hasPeriodicReports: boolean;
     intervalHours: number;
     minPhotos: number;
+    label?: string;
+    requirePhoto?: boolean;
+    checkoutAction?: string;
   };
 }
 
@@ -322,6 +330,22 @@ export default function AttendancePage() {
     (p) => p.status === "PENDING" || p.status === "MISSED"
   ).length;
 
+  const isShiftEmployee =
+    todayStatus?.schedule?.isCrossDay ||
+    todayStatus?.schedule?.is24Hours ||
+    periodicReports.length > 1;
+
+  const reportLabel =
+    todayStatus?.periodicReportRule?.label ||
+    (isShiftEmployee ? "Laporan Patroli" : "Laporan Kinerja Harian");
+
+  const isPhotoRequired =
+    todayStatus?.periodicReportRule?.requirePhoto !== false;
+
+  const minRequiredPhotos = isPhotoRequired
+    ? todayStatus?.periodicReportRule?.minPhotos ?? (isShiftEmployee ? 3 : 1)
+    : 0;
+
   // --- Handover Submit ---
   const submitHandover = async () => {
     if (!handoverNotes || handoverNotes.trim().length < 5) {
@@ -359,12 +383,59 @@ export default function AttendancePage() {
     }
   };
 
-  // --- Periodic Patrol Submit ---
+  // --- File upload from gallery/storage with auto-compression ---
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+            ctx.fillRect(0, h - 28, w, 28);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText(`${reportLabel} | ${timeStr} WIB`, 10, h - 10);
+            const compressed = canvas.toDataURL("image/jpeg", 0.75);
+            setPatrolPhotos((prev) => [...prev, compressed]);
+          }
+        };
+        img.src = evt.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  // --- Periodic Report Submit (Patrol or Daily Performance) ---
   const submitPatrolReport = async () => {
     if (!selectedPatrol) return;
-    const minP = todayStatus?.periodicReportRule?.minPhotos || 3;
-    if (patrolPhotos.length < minP) {
-      setErrorMsg(`Wajib melampirkan minimal ${minP} foto bukti patroli pos/titik jaga.`);
+    if (minRequiredPhotos > 0 && patrolPhotos.length < minRequiredPhotos) {
+      setErrorMsg(`Wajib melampirkan minimal ${minRequiredPhotos} foto bukti ${reportLabel}.`);
+      return;
+    }
+    if (!isShiftEmployee && (!patrolNotes || patrolNotes.trim().length < 5)) {
+      setErrorMsg("Wajib mengisi uraian pekerjaan / kegiatan hari ini (minimal 5 karakter).");
       return;
     }
 
@@ -382,12 +453,13 @@ export default function AttendancePage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal mengirimkan laporan patroli");
+      if (!res.ok) throw new Error(data.error || `Gagal mengirimkan ${reportLabel}`);
 
       setShowPatrolModal(false);
       setPatrolNotes("");
       setPatrolPhotos([]);
       setSelectedPatrol(null);
+      setSuccessNote(`${reportLabel} berhasil disimpan!`);
       fetchStatus();
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -398,10 +470,30 @@ export default function AttendancePage() {
 
   // --- Submit Attendance (Check-In or Check-Out) ---
   const submitAttendance = async () => {
-    // If checking out and has incomplete reports, prompt confirmation
-    if (attendanceType === "PULANG" && pendingReportsCount > 0 && !showIncompleteConfirm) {
-      setShowIncompleteConfirm(true);
-      return;
+    // If checking out and has incomplete reports
+    if (attendanceType === "PULANG" && pendingReportsCount > 0) {
+      const isBlocking =
+        todayStatus?.periodicReportRule?.checkoutAction === "BLOCK";
+
+      if (isBlocking) {
+        setErrorMsg(
+          `Check-out tidak diizinkan. Anda belum menyelesaikan ${reportLabel} hari ini. Silakan selesaikan laporan terlebih dahulu sebelum absen pulang.`
+        );
+        // Automatically open the modal if there's only 1 pending report (Non-Shift)
+        const pendingRep = periodicReports.find(
+          (p) => p.status === "PENDING" || p.status === "MISSED"
+        );
+        if (pendingRep) {
+          setSelectedPatrol(pendingRep);
+          setShowPatrolModal(true);
+        }
+        return;
+      }
+
+      if (!showIncompleteConfirm) {
+        setShowIncompleteConfirm(true);
+        return;
+      }
     }
 
     if (attendanceType === "MASUK" && (!facePhoto || !workplacePhoto)) {
@@ -533,15 +625,15 @@ export default function AttendancePage() {
           </div>
         )}
 
-        {/* PERIODIC PATROL REPORTS TIMELINE (When In Shift / PULANG mode) */}
+        {/* PERIODIC PATROL / DAILY PERFORMANCE REPORT (When In Shift / PULANG mode) */}
         {attendanceType === "PULANG" && periodicReports.length > 0 && (
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-gray-100 pb-2">
               <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                <Clock className="text-purple-600" size={18} />
-                Laporan Patroli Berkala
+                <FileCheck className="text-purple-600" size={18} />
+                {periodicReports.length === 1 ? reportLabel : `${reportLabel} Berkala`}
               </h3>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700">
                 {periodicReports.filter((p) => p.status === "SUBMITTED").length} / {periodicReports.length} Selesai
               </span>
             </div>
@@ -570,13 +662,23 @@ export default function AttendancePage() {
                     )}
                   >
                     <div>
-                      <div className="font-bold">Checkpoint ke-{report.checkpointSequence}</div>
-                      <div className="text-[11px] opacity-75">Jadwal: {schedTime} WIB</div>
+                      <div className="font-bold">
+                        {periodicReports.length === 1
+                          ? `${reportLabel} Hari Ini`
+                          : `Checkpoint ke-${report.checkpointSequence}`}
+                      </div>
+                      <div className="text-[11px] opacity-75">
+                        {periodicReports.length === 1
+                          ? isSubmitted
+                            ? "Sudah dikirim & diverifikasi"
+                            : "Wajib diisi sebelum absen pulang"
+                          : `Jadwal: ${schedTime} WIB`}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {isSubmitted ? (
-                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                        <span className="bg-green-100 text-green-800 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 text-[11px]">
                           <Check size={12} /> Selesai
                         </span>
                       ) : (
@@ -587,9 +689,9 @@ export default function AttendancePage() {
                             setPatrolPhotos([]);
                             setPatrolNotes("");
                           }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1"
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5"
                         >
-                          <Camera size={12} /> Lapor Patroli
+                          <Camera size={13} /> {periodicReports.length === 1 ? "Isi Laporan" : "Lapor Patroli"}
                         </button>
                       )}
                     </div>
@@ -823,65 +925,120 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* MODAL: PERIODIC PATROL SUBMISSION */}
+      {/* MODAL: PERIODIC REPORT / DAILY PERFORMANCE SUBMISSION */}
       {showPatrolModal && selectedPatrol && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl">
-            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
-              <Camera className="text-purple-600" size={20} />
-              Laporan Patroli Checkpoint ke-{selectedPatrol.checkpointSequence}
-            </h3>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                <FileCheck className="text-purple-600" size={20} />
+                {periodicReports.length === 1
+                  ? reportLabel
+                  : `${reportLabel} Checkpoint ke-${selectedPatrol.checkpointSequence}`}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPatrolModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-gray-700 uppercase mb-1">
-                  Catatan Pantauan Lingkungan / Pos
+                  {periodicReports.length === 1
+                    ? "Uraian Pekerjaan / Kegiatan Hari Ini *"
+                    : "Catatan Pantauan Lingkungan / Pos"}
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   required
-                  placeholder="Contoh: Pintu gerbang terkunci rapat, perimeter pagar aman, genset beroperasi normal..."
+                  placeholder={
+                    periodicReports.length === 1
+                      ? "Contoh: Menyelesaikan rekap berkas administrasi, follow-up laporan harian, koordinasi operasional..."
+                      : "Contoh: Pintu gerbang terkunci rapat, perimeter pagar aman, genset beroperasi normal..."
+                  }
                   value={patrolNotes}
                   onChange={(e) => setPatrolNotes(e.target.value)}
-                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs"
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block font-semibold text-gray-700 uppercase mb-1">
-                  Foto Bukti Patroli (Min {todayStatus?.periodicReportRule?.minPhotos || 3} Foto)
+                  Foto Bukti Kegiatan{" "}
+                  {minRequiredPhotos > 0
+                    ? `(Min ${minRequiredPhotos} Foto)`
+                    : "(Opsional)"}
                 </label>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   {patrolPhotos.map((p, i) => (
-                    <div key={i} className="relative rounded-lg overflow-hidden aspect-square border">
-                      <img src={p} alt="Patrol" className="w-full h-full object-cover" />
+                    <div
+                      key={i}
+                      className="relative rounded-lg overflow-hidden aspect-square border group"
+                    >
+                      <img
+                        src={p}
+                        alt="Kegiatan"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPatrolPhotos((prev) =>
+                            prev.filter((_, idx) => idx !== i)
+                          )
+                        }
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 shadow-md hover:bg-red-700"
+                        title="Hapus foto"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   ))}
+
+                  {/* Tombol Kamera */}
                   <button
                     type="button"
                     onClick={() => {
                       setActiveCaptureType("patrol");
                       startCamera("environment");
                     }}
-                    className="border-2 border-dashed border-purple-300 rounded-lg flex flex-col items-center justify-center text-purple-600 hover:bg-purple-50 aspect-square"
+                    className="border-2 border-dashed border-purple-300 rounded-lg flex flex-col items-center justify-center text-purple-600 hover:bg-purple-50 aspect-square transition-colors"
                   >
                     <Camera size={18} />
-                    <span className="text-[10px] mt-1">+ Ambil Foto</span>
+                    <span className="text-[10px] mt-1 font-medium">+ Kamera</span>
                   </button>
+
+                  {/* Tombol Galeri / File */}
+                  <label className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-600 hover:bg-gray-50 aspect-square cursor-pointer transition-colors">
+                    <Upload size={18} />
+                    <span className="text-[10px] mt-1 font-medium">+ Galeri</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
                 </div>
                 <div className="text-[11px] text-gray-500">
-                  Foto terkumpul: {patrolPhotos.length} / {todayStatus?.periodicReportRule?.minPhotos || 3}
+                  Foto terlampir: {patrolPhotos.length}{" "}
+                  {minRequiredPhotos > 0 ? `/ min ${minRequiredPhotos}` : ""}
                 </div>
               </div>
 
-              {errorMsg && <div className="text-red-600">{errorMsg}</div>}
+              {errorMsg && <div className="text-red-600 font-medium">{errorMsg}</div>}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowPatrolModal(false)}
-                className="px-4 py-2 border rounded-xl text-xs font-medium"
+                className="px-4 py-2 border rounded-xl text-xs font-medium hover:bg-gray-50"
               >
                 Batal
               </button>
@@ -889,9 +1046,9 @@ export default function AttendancePage() {
                 type="button"
                 onClick={submitPatrolReport}
                 disabled={submittingPatrol}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50"
               >
-                {submittingPatrol ? "Mengirimkan..." : "Kirim Laporan Patroli"}
+                {submittingPatrol ? "Menyimpan..." : `Simpan ${reportLabel}`}
               </button>
             </div>
           </div>
@@ -903,16 +1060,16 @@ export default function AttendancePage() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl text-center">
             <AlertCircle size={40} className="text-amber-500 mx-auto" />
-            <h3 className="font-bold text-gray-900 text-base">Laporan Patroli Belum Lengkap</h3>
+            <h3 className="font-bold text-gray-900 text-base">{reportLabel} Belum Lengkap</h3>
             <p className="text-xs text-gray-600">
-              Masih terdapat {pendingReportsCount} laporan checkpoint patroli yang belum Anda selesaikan. Sesuai kebijakan sistem, absen pulang akan tetap diproses namun status kehadiran Anda akan ditandai sebagai <strong className="text-amber-700">INCOMPLETE (Tidak Lengkap)</strong>.
+              Masih terdapat {pendingReportsCount} {reportLabel} yang belum Anda selesaikan. Sesuai kebijakan sistem, absen pulang akan tetap diproses namun status kehadiran Anda akan ditandai sebagai <strong className="text-amber-700">INCOMPLETE (Tidak Lengkap)</strong>.
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
               <button
                 onClick={() => setShowIncompleteConfirm(false)}
                 className="px-4 py-2 border rounded-xl text-xs font-medium hover:bg-gray-50"
               >
-                Kembali Lapor Patroli
+                Kembali Isi Laporan
               </button>
               <button
                 onClick={submitAttendance}

@@ -32,6 +32,10 @@ async function getReportData(searchParams: URLSearchParams, session: any) {
     include: {
       employee: { select: { id: true, name: true, nip: true, department: true, position: true } },
       shift: { select: { name: true } },
+      periodicReports: {
+        include: { photos: { select: { photoUrl: true } } },
+        orderBy: { checkpointSequence: "asc" },
+      },
     },
     orderBy: [{ employee: { name: "asc" } }, { date: "asc" }],
   });
@@ -313,6 +317,39 @@ try {
           weeklyLateMinutes: weeklyLate,
           monthlyLateMinutes: monthlyLate,
         },
+        records: records.map((r, i) => {
+          const activityNotes =
+            (r as any).periodicReports
+              ?.map((pr: any) => pr.reportNotes)
+              .filter(Boolean)
+              .join(" | ") ||
+            r.notes ||
+            "-";
+          const activityPhotos =
+            (r as any).periodicReports?.flatMap(
+              (pr: any) => pr.photos?.map((p: any) => p.photoUrl) || []
+            ) || [];
+          const primaryActivityPhoto = activityPhotos[0] || null;
+
+          return {
+            no: i + 1,
+            nip: r.employee.nip,
+            name: r.employee.name,
+            department: r.employee.department,
+            position: r.employee.position || "-",
+            date: format(new Date(r.date), "dd/MM/yyyy"),
+            checkInTime: r.checkInTime ? format(new Date(r.checkInTime), "HH:mm") : "-",
+            checkOutTime: r.checkOutTime ? format(new Date(r.checkOutTime), "HH:mm") : "-",
+            shift: r.shift?.name || "Non-Shift",
+            status: STATUS_LABELS[r.status] ?? r.status,
+            lateMinutes: r.lateMinutes > 0 ? `${r.lateMinutes} mnt` : "-",
+            checkInPhoto: r.checkInPhoto || null,
+            checkOutPhoto: r.checkOutPhoto || null,
+            activityNotes,
+            activityPhoto: primaryActivityPhoto,
+            activityPhotosCount: activityPhotos.length,
+          };
+        }),
         rows: records.map((r, i) => [
           i + 1,
           r.employee.nip,
