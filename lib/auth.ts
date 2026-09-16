@@ -32,6 +32,40 @@ const nextAuth = NextAuth({
         tenantDomain: { label: "Tenant Domain", type: "text" },
       },
       async authorize(credentials, req) {
+        // --- REVERT IMPERSONATION LOGIC ---
+        if ((credentials as any)?.revertImpersonationToken) {
+          try {
+            const decoded = await decode({
+              token: (credentials as any).revertImpersonationToken as string,
+              secret: AUTH_SECRET,
+              salt: "revert",
+            });
+            if (decoded && decoded.superAdminId) {
+              const superAdmin = await prisma.user.findUnique({
+                where: { id: decoded.superAdminId as string },
+                include: { employee: true, tenant: true },
+              });
+              if (superAdmin && superAdmin.role === "SUPER_ADMIN") {
+                return {
+                  id: superAdmin.id,
+                  email: superAdmin.email,
+                  role: "SUPER_ADMIN",
+                  tenantId: superAdmin.tenantId,
+                  tenantDomain: superAdmin.tenant?.subdomain || null,
+                  name: superAdmin.employee?.name ?? superAdmin.email,
+                  employeeId: superAdmin.employee?.id ?? null,
+                  department: superAdmin.employee?.department ?? null,
+                  photoUrl: superAdmin.employee?.photoUrl ?? null,
+                };
+              }
+            }
+          } catch (err) {
+            console.error("Revert impersonation error:", err);
+            return null;
+          }
+          return null;
+        }
+
         // --- IMPERSONATION LOGIC ---
         if ((credentials as any)?.impersonationToken) {
           try {
@@ -65,6 +99,7 @@ const nextAuth = NextAuth({
                     department: realAdmin.employee?.department || null,
                     photoUrl: realAdmin.employee?.photoUrl || null,
                     name: realAdmin.employee?.name || `Admin ${tenant.name}`,
+                    originalSuperAdminId: decoded.superAdminId,
                   };
                 } else {
                   return {
@@ -78,6 +113,7 @@ const nextAuth = NextAuth({
                     department: null,
                     photoUrl: null,
                     name: `Admin ${tenant.name}`,
+                    originalSuperAdminId: decoded.superAdminId,
                   };
                 }
               }
@@ -204,6 +240,9 @@ const nextAuth = NextAuth({
         token.employeeId = (user as any).employeeId;
         token.department = (user as any).department;
         token.photoUrl = (user as any).photoUrl;
+        if ((user as any).originalSuperAdminId) {
+          token.originalSuperAdminId = (user as any).originalSuperAdminId;
+        }
       }
       return token;
     },
@@ -216,6 +255,9 @@ const nextAuth = NextAuth({
         session.user.employeeId = token.employeeId as string | null;
         session.user.department = token.department as string | null;
         session.user.photoUrl = token.photoUrl as string | null;
+        if (token.originalSuperAdminId) {
+          (session.user as any).originalSuperAdminId = token.originalSuperAdminId;
+        }
       }
       return session;
     },

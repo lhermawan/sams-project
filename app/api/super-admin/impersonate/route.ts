@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const token = await encode({
       token: { 
         impersonateTenantId: tenantId,
+        superAdminId: session.user.id,
       },
       maxAge: 3600,
       salt: "impersonate",

@@ -100,6 +100,36 @@ export default function AdminNavbar() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {(session?.user as any)?.originalSuperAdminId && (
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/impersonate/revert", { method: "POST" });
+                const data = await res.json();
+                if (data.token) {
+                  import("next-auth/react").then(({ signIn }) => {
+                    signIn("credentials", {
+                      revertImpersonationToken: data.token,
+                      redirect: false,
+                    }).then((res) => {
+                      if (res?.ok) {
+                        window.location.replace("/super-admin/dashboard");
+                      } else {
+                        alert("Gagal kembali ke Super Admin");
+                      }
+                    });
+                  });
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-medium transition-colors"
+          >
+            Kembali ke Super Admin
+          </button>
+        )}
+
         {/* Notification Bell */}
         <NotificationBell />
 
