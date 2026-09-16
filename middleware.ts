@@ -35,7 +35,7 @@ export default auth((req) => {
 
   // --- Auth & Role Redirection Logic ---
   const isLoginPage = pathname === "/login" || pathname.endsWith("/login");
-  const publicRoutes = ["/impersonate", "/manifest.json", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/favicon.ico"];
+  const publicRoutes = ["/impersonate", "/manifest.json", "/manifest.webmanifest", "/sw.js", "/icon.svg", "/favicon.ico", "/logo.png", "/icon.png", "/apple-touch-icon.png"];
   const isPublic = isLoginPage || publicRoutes.includes(pathname) || pathname.startsWith("/icons/") || pathname.startsWith("/api/");
 
   if (isPublic) {
@@ -103,6 +103,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|uploads|icons|favicon.ico).*)"
+    "/((?!api|_next/static|_next/image|uploads|icons|favicon.ico|icon.png|logo.png|apple-touch-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"
   ],
 };
