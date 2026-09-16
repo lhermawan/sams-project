@@ -119,16 +119,9 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
               <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 font-medium text-gray-900">{t.name}</td>
                 <td className="px-6 py-4 text-indigo-600 font-mono text-xs">
-                  <a 
-                    href={typeof window !== "undefined" && (window.location.hostname.endsWith("localhost") || window.location.hostname === "127.0.0.1")
-                      ? `http://${t.subdomain}.localhost:${window.location.port || 3000}`
-                      : `https://${t.subdomain}.5758inc.my.id`} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="hover:underline"
-                  >
+                  <span className="select-all">
                     {t.subdomain}.5758inc.my.id
-                  </a>
+                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <button 
