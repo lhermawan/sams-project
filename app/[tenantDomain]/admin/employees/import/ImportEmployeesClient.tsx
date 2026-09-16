@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, FileType, Check, AlertCircle } from "lucide-react";
 import ExcelJS from "exceljs";
 
-export default function ImportUsersClient({ tenants }: { tenants: any[] }) {
+export default function ImportEmployeesClient() {
   const router = useRouter();
-  const [tenantId, setTenantId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,7 +78,7 @@ export default function ImportUsersClient({ tenants }: { tenants: any[] }) {
   };
 
   const handleImport = async () => {
-    if (!file || !tenantId || allData.length === 0) return;
+    if (!file || allData.length === 0) return;
 
     setLoading(true);
     setError("");
@@ -93,28 +92,27 @@ export default function ImportUsersClient({ tenants }: { tenants: any[] }) {
       for (let i = 0; i < allData.length; i += batchSize) {
         const batch = allData.slice(i, i + batchSize);
         
-        const res = await fetch("/api/super-admin/users/import", {
+        const res = await fetch("/api/employees/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tenantId,
-            data: batch
+            employees: batch
           })
         });
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Gagal melakukan import pada batch tertentu");
 
-        totalSuccess += data.count || 0;
+        totalSuccess += (data.insertedCount || 0) + (data.updatedCount || 0);
         setProgress(Math.round(((i + batch.length) / allData.length) * 100));
       }
 
-      setSuccess(`Berhasil mengimport ${totalSuccess} pegawai.`);
+      setSuccess(`Berhasil memproses ${totalSuccess} pegawai.`);
       setFile(null);
       setPreviewData([]);
       setAllData([]);
       setTimeout(() => {
-        router.push("/super-admin/users");
+        router.back();
         router.refresh();
       }, 2000);
     } catch (err: any) {
@@ -150,21 +148,6 @@ export default function ImportUsersClient({ tenants }: { tenants: any[] }) {
             <p>{success}</p>
           </div>
         )}
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Pilih Mitra / Perusahaan Target</label>
-          <select 
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value)}
-            disabled={loading}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            <option value="" disabled>-- Pilih Perusahaan --</option>
-            {tenants.map(t => (
-              <option key={t.id} value={t.id}>{t.name} ({t.subdomain}.5758inc.my.id)</option>
-            ))}
-          </select>
-        </div>
 
         <div className="p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 text-center space-y-4">
           <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
@@ -238,7 +221,7 @@ export default function ImportUsersClient({ tenants }: { tenants: any[] }) {
         <div className="pt-4 border-t flex justify-end">
           <button 
             onClick={handleImport}
-            disabled={loading || !file || !tenantId || allData.length === 0}
+            disabled={loading || !file || allData.length === 0}
             className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Mengimport..." : (

@@ -1,84 +1,65 @@
 import { NextResponse } from "next/server";
+import ExcelJS from "exceljs";
 
 export async function GET() {
-  const headers = [
-    "NIP",
-    "Nama Lengkap",
-    "Email",
-    "Password",
-    "Bagian",
-    "Jabatan",
-    "Nomor Telepon",
-    "Alamat",
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Data Pegawai");
+
+  // Define columns
+  worksheet.columns = [
+    { header: "NIP", key: "nip", width: 25 },
+    { header: "Nama Lengkap", key: "nama", width: 30 },
+    { header: "Bagian", key: "bagian", width: 25 },
+    { header: "Jabatan", key: "jabatan", width: 25 },
+    { header: "Kode Jenis Pegawai", key: "kode", width: 25 },
+    { header: "Nomor Telepon", key: "telepon", width: 20 },
+    { header: "Alamat", key: "alamat", width: 40 },
   ];
 
+  // Style header row
+  worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF4F46E5" }, // Indigo 600
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  // Add sample rows
   const sampleRows = [
-    [
-      "198501012010011001",
-      "Budi Santoso",
-      "budi.santoso@perusahaan.com",
-      "Pegawai@123",
-      "Teknologi Informasi",
-      "Software Engineer",
-      "081234567890",
-      "Jl. Jenderal Sudirman No. 10, Jakarta",
-    ],
-    [
-      "199002022015022002",
-      "Siti Rahmawati",
-      "siti.rahmawati@perusahaan.com",
-      "Pegawai@123",
-      "Operasional",
-      "Staff Administrasi",
-      "081298765432",
-      "Jl. Gatot Subroto No. 25, Jakarta",
-    ],
-    [
-      "199203032018031003",
-      "Ahmad Fauzi",
-      "ahmad.fauzi@perusahaan.com",
-      "Pegawai@123",
-      "Keamanan",
-      "Petugas Keamanan",
-      "081311223344",
-      "Jl. Rasuna Said No. 5, Jakarta",
-    ],
-    [
-      "199505052021012005",
-      "Dewi Lestari",
-      "dewi.lestari@perusahaan.com",
-      "Pegawai@123",
-      "Pelayanan",
-      "Customer Service",
-      "081377889900",
-      "Jl. M.H. Thamrin No. 8, Jakarta",
-    ],
-    [
-      "199606062022022006",
-      "Rian Pratama",
-      "rian.pratama@perusahaan.com",
-      "Pegawai@123",
-      "Keuangan",
-      "Staff Akuntansi",
-      "081255443322",
-      "Jl. Diponegoro No. 15, Bandung",
-    ],
+    {
+      nip: "198501012010011001",
+      nama: "Budi Santoso",
+      bagian: "Teknologi Informasi",
+      jabatan: "Software Engineer",
+      kode: "SECURITY", // Using user's requested example
+      telepon: "081234567890",
+      alamat: "Jl. Jenderal Sudirman No. 10, Jakarta",
+    },
+    {
+      nip: "199002022015022002",
+      nama: "Siti Rahmawati",
+      bagian: "Operasional",
+      jabatan: "Staff Administrasi",
+      kode: "NS",
+      telepon: "081298765432",
+      alamat: "Jl. Gatot Subroto No. 25, Jakarta",
+    },
   ];
 
-  const csvContent =
-    "\uFEFF" +
-    [
-      headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(","),
-      ...sampleRows.map((r) =>
-        r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")
-      ),
-    ].join("\r\n");
+  sampleRows.forEach((row) => {
+    worksheet.addRow(row);
+  });
 
-  return new NextResponse(csvContent, {
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  return new NextResponse(buffer, {
     headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition":
-        'attachment; filename="template_data_pegawai_sams.csv"',
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": 'attachment; filename="Template_Pegawai.xlsx"',
     },
   });
 }

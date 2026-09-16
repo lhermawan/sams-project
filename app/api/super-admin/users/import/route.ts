@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
       const department = row["Bagian"]?.trim();
       const position = row["Jabatan"]?.trim();
       const typeCode = row["Kode Jenis Pegawai"]?.trim().toLowerCase();
+      const phone = row["Nomor Telepon"]?.toString().trim();
+      const address = row["Alamat"]?.trim();
 
       if (!name || !nip) continue; // Skip invalid rows
 
@@ -60,8 +62,10 @@ export async function POST(req: NextRequest) {
             create: {
               name,
               nip,
-              department: department || "",
-              position: position || "",
+              department: department || "Umum",
+              position: position || "Staff",
+              phone: phone || null,
+              address: address || null,
               employeeTypeId,
               tenantId,
               isActive: true,

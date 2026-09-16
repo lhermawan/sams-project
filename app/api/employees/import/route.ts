@@ -20,11 +20,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fetch employee types to map Kode Jenis Pegawai
+    const employeeTypes = await prisma.employeeType.findMany({
+      where: { tenantId: session.user.tenantId }
+    });
+    const employeeTypeMap = new Map(employeeTypes.map(et => [et.code.toLowerCase(), et.id]));
+
     // Pre-hash standard default password once to optimize bulk import of thousands of rows
     const DEFAULT_PASS = "Pegawai@123";
     const defaultPasswordHash = await bcrypt.hash(DEFAULT_PASS, 10);
-    const passwordCache = new Map<string, string>();
-    passwordCache.set(DEFAULT_PASS, defaultPasswordHash);
 
     let insertedCount = 0;
     let updatedCount = 0;
@@ -40,32 +44,21 @@ export async function POST(req: NextRequest) {
         const row = batch[j];
 
         try {
-          let name = (row.name || row["Nama Lengkap"] || row["nama"] || "").trim();
-          let nip = (row.nip || row["NIP"] || "").toString().trim();
-          let email = (row.email || row["Email"] || "").trim();
-          let password = (row.password || row["Password"] || DEFAULT_PASS).trim();
-          let department = (row.department || row["Bagian"] || row["Departemen"] || "Umum").trim();
-          let position = (row.position || row["Jabatan"] || "Staff").trim();
-          let phone = (row.phone || row["Nomor Telepon"] || row["No HP"] || row["Telepon"] || "").toString().trim();
-          let address = (row.address || row["Alamat"] || "").trim();
+          const name = row["Nama Lengkap"]?.trim();
+          const nip = row["NIP"]?.toString().trim();
+          const department = row["Bagian"]?.trim() || "Umum";
+          const position = row["Jabatan"]?.trim() || "Staff";
+          const typeCode = row["Kode Jenis Pegawai"]?.trim().toLowerCase();
+          const phone = row["Nomor Telepon"]?.toString().trim() || null;
+          const address = row["Alamat"]?.trim() || null;
 
-          // Graceful fallback for empty fields so zero rows are blocked
-          if (!name) name = `Pegawai ${rowIdx}`;
-          if (!nip) nip = `EMP${Date.now().toString().slice(-4)}${rowIdx}`;
-          if (!email) email = `${nip.toLowerCase().replace(/[^a-z0-9]/g, "")}@sams.id`;
+          if (!name || !nip) continue;
 
-          // Hash password efficiently
-          let hashedPassword = passwordCache.get(password);
-          if (!hashedPassword) {
-            hashedPassword = await bcrypt.hash(password, 10);
-            passwordCache.set(password, hashedPassword);
-          }
+          const employeeTypeId = typeCode ? (employeeTypeMap.get(typeCode) || null) : null;
 
           // Check if employee with NIP already exists
           const existingEmployee = await prisma.employee.findFirst({
-            where: { nip,
-                tenantId: session.user.tenantId
-            },
+            where: { nip, tenantId: session.user.tenantId },
             include: { user: true },
           });
 
@@ -79,43 +72,43 @@ export async function POST(req: NextRequest) {
                 position,
                 phone: phone || existingEmployee.phone,
                 address: address || existingEmployee.address,
-                  tenantId: session.user.tenantId
-            },
+                employeeTypeId: employeeTypeId || existingEmployee.employeeTypeId,
+              },
             });
             updatedCount++;
           } else {
-            // Check email uniqueness
-            let finalEmail = email;
-            const existingUser = await prisma.user.findFirst({
-              where: { email: finalEmail,
-                  tenantId: session.user.tenantId
-            },
-            });
-            if (existingUser) {
-              const [local, dom] = email.includes("@") ? email.split("@") : [email, "sams.id"];
-              finalEmail = `${local}_${Date.now().toString().slice(-4)}@${dom}`;
+            // Generate base username
+            const baseUsername = name.toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 20);
+            let username = `${baseUsername}@5758inc.id`;
+            let counter = 1;
+
+            // Make sure email is unique in this tenant
+            while (await prisma.user.findUnique({ where: { tenantId_email: { tenantId: session.user.tenantId, email: username } } })) {
+              username = `${baseUsername}${counter}@5758inc.id`;
+              counter++;
             }
 
             await prisma.user.create({
               data: {
-                email: finalEmail,
-                password: hashedPassword,
+                email: username,
+                password: defaultPasswordHash,
                 role: "EMPLOYEE",
                 isActive: true,
+                tenantId: session.user.tenantId,
                 employee: {
                   create: {
                     nip,
                     name,
                     department,
                     position,
-                    phone: phone || null,
-                    address: address || null,
+                    phone,
+                    address,
+                    employeeTypeId,
                     isActive: true,
                     tenantId: session.user.tenantId,
                   },
                 },
-                  tenantId: session.user.tenantId
-            },
+              },
             });
             insertedCount++;
           }
