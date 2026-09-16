@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   UserCheck,
   UserX,
@@ -411,27 +412,20 @@ export default function EmployeeTable({ employees: initialEmployees }: { employe
         <div className="flex items-center gap-2 flex-wrap">
           <a
             href="/api/employees/template"
-            download="template_data_pegawai_sams.csv"
+            download="template_data_pegawai_sams.xlsx"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-            title="Unduh format template CSV resmi untuk memudahkan input ratusan/ribuan pegawai"
+            title="Unduh format template Excel resmi untuk memudahkan input ratusan/ribuan pegawai"
           >
             <Download size={14} className="text-emerald-600" />
-            Unduh Format CSV
+            Unduh Format Excel
           </a>
-          <button
-            type="button"
-            onClick={() => {
-              setImportModal(true);
-              setCsvFile(null);
-              setParsedEmployees([]);
-              setImportResult(null);
-              setImportError("");
-            }}
+          <Link
+            href="/admin/employees/import"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <Upload size={14} />
-            Tambah Pegawai via CSV / Excel
-          </button>
+            Tambah Pegawai via Excel
+          </Link>
         </div>
       </div>
 

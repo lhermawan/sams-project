@@ -79,14 +79,6 @@ export default async function EmployeesPage({
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            href={`/${params.tenantDomain}/admin/employees/import`}
-            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-2xs cursor-pointer"
-            title="Import pegawai massal menggunakan file Excel"
-          >
-            <Download size={15} className="text-emerald-600" />
-            Import Pegawai
-          </Link>
-          <Link
             href="/admin/employees/new"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-xs"
           >
