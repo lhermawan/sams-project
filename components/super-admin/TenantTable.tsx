@@ -30,10 +30,7 @@ const [loadingId, setLoadingId] = useState<string | null>(null);
       const protocol = window.location.protocol;
       const url = `${protocol}//${host}/impersonate?token=${token}`;
       
-      const newWindow = window.open(url, "_blank");
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
-        window.location.href = url;
-      }
+      window.location.href = url;
     } catch (err) {
       alert("Gagal masuk ke admin panel mitra ini");
     } finally {

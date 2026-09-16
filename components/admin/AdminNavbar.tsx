@@ -111,7 +111,10 @@ export default function AdminNavbar() {
                       redirect: false,
                     }).then((res) => {
                       if (res?.ok) {
-                        window.location.replace("/super-admin/dashboard");
+                        const port = window.location.port ? `:${window.location.port}` : '';
+                        const isLocal = window.location.hostname.endsWith("localhost") || window.location.hostname === "127.0.0.1";
+                        const host = isLocal ? `localhost${port}` : `5758inc.my.id`;
+                        window.location.replace(`${window.location.protocol}//${host}/super-admin/dashboard`);
                       } else {
                         alert("Gagal kembali ke Super Admin");
                       }
