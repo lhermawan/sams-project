@@ -64,12 +64,8 @@ export default function SuperAdminSidebar() {
       >
         {/* Logo & Close / Collapse Header */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-700">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {logo ? (
-              <img src={logo} alt="Logo" className="w-full h-full object-contain p-0.5" />
-            ) : (
-              <Shield size={16} className="text-white" />
-            )}
+          <div className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0 shadow-xs overflow-hidden">
+            <img src={logo || "/logo.png"} alt="Logo" className="w-full h-full object-contain p-0.5" />
           </div>
           {(!collapsed || sidebarOpen) && (
             <div className="min-w-0 flex-1">

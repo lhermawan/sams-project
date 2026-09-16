@@ -135,7 +135,11 @@ export default function LoginPage() {
                 className="w-full h-full object-contain"
               />
             ) : (
-              <Shield className="w-10 h-10 text-blue-600" />
+              <img
+                src="/logo.png"
+                alt="Logo Aplikasi"
+                className="w-full h-full object-contain"
+              />
             )}
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">{branding.app_name}</h1>

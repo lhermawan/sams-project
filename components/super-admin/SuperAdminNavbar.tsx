@@ -73,11 +73,9 @@ export default function SuperAdminNavbar() {
           <Menu size={22} />
         </button>
 
-        {logo && (
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden p-1 shadow-xs flex-shrink-0">
-            <img src={logo} alt="Logo" className="w-full h-full object-contain" />
-          </div>
-        )}
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center overflow-hidden p-1 shadow-xs flex-shrink-0">
+          <img src={logo || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
+        </div>
 
         <div className="min-w-0">
           <h1 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-1.5 sm:gap-2 truncate">
