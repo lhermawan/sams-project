@@ -72,7 +72,6 @@ export async function GET() {
               where: {
                 employeeTypeId: type.id,
                 isActive: true,
-                userId: { not: null }
               },
               include: {
                 attendances: {
@@ -94,18 +93,23 @@ export async function GET() {
         // Check rosters for today
         const rosters = await prisma.employeeShiftRoster.findMany({
           where: {
-            date: new Date(todayStr + "T00:00:00Z"),
+            rosterDate: new Date(todayStr + "T00:00:00Z"),
             employee: { employeeTypeId: type.id, isActive: true },
-            attendanceId: null, // haven't checked in
           },
           include: {
             shift: true,
-            employee: true
+            employee: {
+              include: {
+                attendances: {
+                  where: { date: new Date(todayStr + "T00:00:00Z") }
+                }
+              }
+            }
           }
         });
 
         for (const roster of rosters) {
-          if (roster.shift && roster.shift.startTime) {
+          if (roster.shift && roster.shift.startTime && roster.employee.attendances.length === 0) {
             const [sh, sm] = roster.shift.startTime.split(":").map(Number);
             const targetTotal = sh * 60 + sm;
             // Handle cross day / next day (simplification: if target < current, it might be tomorrow, but reminders usually happen before target)
@@ -125,12 +129,14 @@ export async function GET() {
         
         // Send notification
         await createManyNotifications({
-          tenantId: setting.tenantId,
-          userIds: employeeIdsToRemind,
-          type: "REMINDER",
-          title: "Pengingat Absensi",
-          message: setting.message,
-          data: JSON.stringify({ url: "/attendance" })
+          data: employeeIdsToRemind.map((userId) => ({
+            tenantId: setting.tenantId,
+            userId,
+            type: "REMINDER",
+            title: "Pengingat Absensi",
+            message: setting.message,
+            data: JSON.stringify({ url: "/attendance" })
+          }))
         });
         notificationsSent += employeeIdsToRemind.length;
       }
