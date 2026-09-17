@@ -1,3 +1,4 @@
+import { createNotification } from "@/lib/notification";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
           ? "Pengajuan " + typeLabel + " Anda telah disetujui" + (cleanedNotes ? " (Catatan: " + cleanedNotes + ")" : "")
           : "Pengajuan " + typeLabel + " Anda ditolak" + (cleanedNotes ? " (Alasan: " + cleanedNotes + ")" : "");
 
-      await prisma.notification.create({
+      await createNotification({
         data: {
           userId: existing.employee.user.id,
           type: "LEAVE_STATUS",

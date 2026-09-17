@@ -1,3 +1,4 @@
+import { createNotification } from "@/lib/notification";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
         REJECT: `Absensi Anda ditolak${cleanedNotes ? ` (Alasan: ${cleanedNotes})` : ""}`,
         CORRECT: `Absensi Anda dikoreksi${cleanedNotes ? ` (Catatan: ${cleanedNotes})` : ""}`,
       };
-      await prisma.notification.create({
+      await createNotification({
         data: {
           userId: employee.userId,
           type: "VALIDATION_REQUEST",

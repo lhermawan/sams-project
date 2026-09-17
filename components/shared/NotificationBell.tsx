@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
+import { subscribeToWebPush, unsubscribeFromWebPush } from "@/lib/webpush";
 
 interface Notification {
   id: string;
@@ -58,6 +59,10 @@ export default function NotificationBell({
   const [tab, setTab] = useState<"ALL" | "UNREAD">("ALL");
   const panelRef = useRef<HTMLDivElement>(null);
 
+  const [pushSupported, setPushSupported] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLoadingPush, setIsLoadingPush] = useState(false);
+
   const fetchNotifications = async () => {
     try {
       const res = await fetch("/api/notifications?limit=25");
@@ -72,6 +77,33 @@ export default function NotificationBell({
     const interval = setInterval(fetchNotifications, 30000); // poll every 30s
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
+      setPushSupported(true);
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          setIsSubscribed(!!sub);
+        });
+      });
+    }
+  }, []);
+
+  const handleTogglePush = async () => {
+    setIsLoadingPush(true);
+    if (isSubscribed) {
+      await unsubscribeFromWebPush();
+      setIsSubscribed(false);
+    } else {
+      const res = await subscribeToWebPush();
+      if (res.success) {
+        setIsSubscribed(true);
+      } else {
+        alert(res.error || "Gagal mengaktifkan notifikasi");
+      }
+    }
+    setIsLoadingPush(false);
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -264,6 +296,32 @@ export default function NotificationBell({
               })
             )}
           </div>
+
+          {/* Web Push Prompt */}
+          {pushSupported && (
+            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-800">Notifikasi HP</span>
+                <span className="text-[10px] text-gray-500">
+                  {isSubscribed ? "Aktif" : "Mati (Klik untuk menyalakan)"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleTogglePush}
+                disabled={isLoadingPush}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  isSubscribed ? 'bg-blue-600' : 'bg-gray-300'
+                } ${isLoadingPush ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    isSubscribed ? 'translate-x-4.5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

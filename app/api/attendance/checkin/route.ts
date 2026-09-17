@@ -1,3 +1,4 @@
+import { createManyNotifications, createNotification } from "@/lib/notification";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -214,7 +215,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await prisma.notification.create({
+    await createNotification({
       data: {
         userId: session.user.id,
         type: isLate ? "LATE_WARNING" : "ATTENDANCE_SUCCESS",
@@ -241,7 +242,7 @@ export async function POST(req: NextRequest) {
 
         if (admins.length > 0) {
           const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-          await prisma.notification.createMany({
+          await createManyNotifications({
             data: admins.map((adm) => ({
               tenantId: session.user.tenantId,
               userId: adm.id,

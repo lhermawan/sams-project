@@ -59,9 +59,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  employee      Employee?
-  auditLogsBy   AuditLog[]     @relation("AuditLogsBy")
-  notifications Notification[]
+  employee          Employee?
+  auditLogsBy       AuditLog[]         @relation("AuditLogsBy")
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -463,6 +464,20 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+// ─── Push Subscription ───────────────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@map("push_subscriptions")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { createManyNotifications, createNotification } from "@/lib/notification";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -263,7 +264,7 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
       if (admins.length > 0) {
-        await prisma.notification.createMany({
+        await createManyNotifications({
           data: admins.map((admin) => ({
             tenantId: session.user.tenantId,
             userId: admin.id,
@@ -275,7 +276,7 @@ export async function POST(req: NextRequest) {
         });
       }
     } else {
-      await prisma.notification.create({
+      await createNotification({
         data: {
           userId: employee.userId,
           type: "LEAVE_REQUEST",

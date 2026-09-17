@@ -1,3 +1,4 @@
+import { createManyNotifications } from "@/lib/notification";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (superAdmins.length > 0) {
-        await prisma.notification.createMany({
+        await createManyNotifications({
           data: superAdmins.map((sa) => ({
             tenantId: sa.tenantId,
             userId: sa.id,
