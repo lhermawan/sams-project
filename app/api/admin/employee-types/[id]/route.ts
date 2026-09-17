@@ -21,6 +21,7 @@ export async function GET(
         shifts: true,
         workSchedules: { orderBy: { dayOfWeek: "asc" } },
         rules: { orderBy: { priority: "asc" } },
+        reminder: true,
         _count: { select: { employees: true } },
       },
     });
@@ -217,6 +218,28 @@ export async function PATCH(
         }
       }
       return NextResponse.json({ success: true, message: "Jadwal harian berhasil diperbarui." });
+    }
+
+    // 4. UPDATE REMINDER SETTING
+    if (action === "UPDATE_REMINDER") {
+      const { isEnabled, message, minutesBefore } = payload;
+      const reminder = await prisma.reminderSetting.upsert({
+        where: { employeeTypeId: id },
+        update: {
+          isEnabled: !!isEnabled,
+          message: message || "Jangan lupa absen masuk hari ini!",
+          minutesBefore: Number(minutesBefore) || 30,
+          tenantId: session.user.tenantId,
+        },
+        create: {
+          employeeTypeId: id,
+          isEnabled: !!isEnabled,
+          message: message || "Jangan lupa absen masuk hari ini!",
+          minutesBefore: Number(minutesBefore) || 30,
+          tenantId: session.user.tenantId,
+        },
+      });
+      return NextResponse.json({ success: true, message: "Pengaturan pengingat berhasil disimpan.", data: reminder });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

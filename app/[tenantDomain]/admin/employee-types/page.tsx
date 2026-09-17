@@ -18,6 +18,7 @@ import {
   ToggleRight,
   Briefcase,
   Users,
+  Bell,
 } from "lucide-react";
 
 export default function EmployeeTypesAdminPage() {
@@ -171,6 +172,34 @@ export default function EmployeeTypesAdminPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan aturan");
       setMessage({ type: "success", text: `Aturan ${ruleType} berhasil diperbarui!` });
+      await fetchTypes();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save Reminder Setting
+  const handleSaveReminder = async (isEnabled: boolean, messageText: string, minutesBefore: number) => {
+    try {
+      setSaving(true);
+      setMessage(null);
+      const res = await fetch(`/api/admin/employee-types/${selectedId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_REMINDER",
+          payload: {
+            isEnabled,
+            message: messageText,
+            minutesBefore,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menyimpan pengingat");
+      setMessage({ type: "success", text: "Pengaturan pengingat berhasil diperbarui!" });
       await fetchTypes();
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -577,6 +606,13 @@ export default function EmployeeTypesAdminPage() {
               initialConfig={getRuleConfig("EARLY_CHECKOUT_LOCK")}
               isActive={isRuleActive("EARLY_CHECKOUT_LOCK")}
               onSave={(config: any, active: boolean) => handleSaveRule("EARLY_CHECKOUT_LOCK", config, active, "PRE_CHECK_OUT", 5)}
+              saving={saving}
+            />
+
+            {/* Reminder Setting */}
+            <ReminderSettingCard
+              initialSetting={selectedType.reminder}
+              onSave={handleSaveReminder}
               saving={saving}
             />
           </div>
@@ -1275,6 +1311,87 @@ function EarlyCheckoutRuleCard({ typeId, initialConfig, isActive, onSave, saving
         className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-xs"
       >
         Simpan Aturan Absen Pulang
+      </button>
+    </div>
+  );
+}
+
+// Subcomponent: Reminder Setting Card
+function ReminderSettingCard({ initialSetting, onSave, saving }: any) {
+  const [active, setActive] = useState(initialSetting?.isEnabled ?? false);
+  const [message, setMessage] = useState(initialSetting?.message ?? "Jangan lupa absen masuk hari ini!");
+  const [minutesBefore, setMinutesBefore] = useState(initialSetting?.minutesBefore ?? 30);
+
+  useEffect(() => {
+    setActive(initialSetting?.isEnabled ?? false);
+    setMessage(initialSetting?.message ?? "Jangan lupa absen masuk hari ini!");
+    setMinutesBefore(initialSetting?.minutesBefore ?? 30);
+  }, [initialSetting]);
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-blue-200 shadow-sm space-y-4 relative overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+      <div className="flex items-center justify-between border-b border-gray-100 pb-3 pt-1">
+        <div className="flex items-center gap-2">
+          <Bell className="text-blue-600" size={20} />
+          <h4 className="font-bold text-gray-900">Pengingat Absensi (Push Notif)</h4>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActive(!active)}
+          className={`text-sm font-medium px-3 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+            active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+          }`}
+        >
+          {active ? "Aktif" : "Nonaktif"}
+        </button>
+      </div>
+
+      <div className="space-y-4 text-sm">
+        <p className="text-gray-500 text-xs">
+          Kirim notifikasi pengingat ke HP pegawai secara otomatis sebelum jam masuk kerja.
+        </p>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Waktu Pengiriman
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={5}
+              max={120}
+              value={minutesBefore}
+              onChange={(e) => setMinutesBefore(Number(e.target.value))}
+              disabled={!active}
+              className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+            />
+            <span className="text-xs text-gray-500">Menit sebelum jam masuk</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+            Pesan Pengingat
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={!active}
+            rows={2}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white resize-none focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            placeholder="Contoh: Halo! Jangan lupa absen masuk 30 menit lagi ya."
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onSave(active, message, minutesBefore)}
+        disabled={saving}
+        className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-xs transition-colors"
+      >
+        Simpan Pengingat
       </button>
     </div>
   );

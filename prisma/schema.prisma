@@ -40,8 +40,9 @@ model Tenant {
   notifications   Notification[]
   employeeShifts  EmployeeShift[]
   rosters         EmployeeShiftRoster[]
-  handovers       AttendanceHandover[]
-  periodicReports PeriodicReport[]
+  handovers         AttendanceHandover[]
+  periodicReports   PeriodicReport[]
+  reminderSettings  ReminderSetting[]
 
   @@map("tenants")
 }
@@ -87,10 +88,30 @@ model EmployeeType {
   workSchedules WorkSchedule[]
   rules         AttendanceRule[]
   attendances   Attendance[]
+  reminder      ReminderSetting?
 
   @@unique([tenantId, code])
   @@map("employee_types")
 }
+
+// ─── Reminder Setting ────────────────────────────────────────────────────────
+
+model ReminderSetting {
+  id             String       @id @default(cuid())
+  tenantId       String
+  employeeTypeId String       @unique
+  isEnabled      Boolean      @default(false)
+  message        String       @default("Jangan lupa absen masuk hari ini!")
+  minutesBefore  Int          @default(30)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id], onDelete: Cascade)
+
+  @@map("reminder_settings")
+}
+
 
 // ─── Employee ────────────────────────────────────────────────────────────────
 
