@@ -223,8 +223,39 @@ export async function POST(req: NextRequest) {
           ? `Absen masuk dicatat pada ${now.toLocaleTimeString("id-ID")} WIB (Terlambat ${lateMinutes} menit).`
           : `Absen masuk berhasil dicatat pada ${now.toLocaleTimeString("id-ID")} WIB. Selamat bertugas!`,
         tenantId: session.user.tenantId,
+        data: JSON.stringify({ url: "/history" }),
       },
     });
+
+    // Notifikasi ke seluruh Admin Mitra bila ada pegawai yang terlambat
+    if (isLate) {
+      try {
+        const admins = await prisma.user.findMany({
+          where: {
+            tenantId: session.user.tenantId,
+            role: "ADMIN",
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        if (admins.length > 0) {
+          const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+          await prisma.notification.createMany({
+            data: admins.map((adm) => ({
+              tenantId: session.user.tenantId,
+              userId: adm.id,
+              type: "LATE_ATTENDANCE",
+              title: `Pegawai Terlambat: ${employee.name}`,
+              message: `${employee.name} (${employee.department}) masuk pukul ${timeStr} WIB (Terlambat ${lateMinutes} menit).`,
+              data: JSON.stringify({ url: "/admin/attendance" }),
+            })),
+          });
+        }
+      } catch (adminNotifErr) {
+        console.warn("Gagal membuat notifikasi keterlambatan ke admin:", adminNotifErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,

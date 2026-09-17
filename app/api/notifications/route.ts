@@ -5,30 +5,34 @@ import { prisma } from "@/lib/db";
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const unreadOnly = searchParams.get("unread") === "true";
     const limit = parseInt(searchParams.get("limit") ?? "20");
 
+    const where: any = { userId: session.user.id };
+    if (unreadOnly) where.isRead = false;
+    if (session.user.role !== "SUPER_ADMIN" && session.user.tenantId) {
+      where.tenantId = session.user.tenantId;
+    }
+
     const notifications = await prisma.notification.findMany({
-      where: {
-        userId: session.user.id,
-        ...(unreadOnly ? { isRead: false } : {}),
-          tenantId: session.user.tenantId
-    },
+      where,
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
     const unreadCount = await prisma.notification.count({
-      where: { userId: session.user.id, isRead: false,
-          tenantId: session.user.tenantId
-    },
+      where: {
+        ...where,
+        isRead: false,
+      },
     });
 
     return NextResponse.json({ notifications, unreadCount });
-  } catch {
+  } catch (err) {
+    console.error("GET /api/notifications error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
@@ -37,29 +41,31 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const { id, markAllRead } = body;
 
+    const baseWhere: any = { userId: session.user.id };
+    if (session.user.role !== "SUPER_ADMIN" && session.user.tenantId) {
+      baseWhere.tenantId = session.user.tenantId;
+    }
+
     if (markAllRead) {
       await prisma.notification.updateMany({
-        where: { userId: session.user.id, isRead: false },
+        where: { ...baseWhere, isRead: false },
         data: { isRead: true },
       });
     } else if (id) {
-      await prisma.notification.update({
-        where: { id,
-            tenantId: session.user.tenantId
-        },
-        data: { isRead: true,
-            tenantId: session.user.tenantId
-        },
+      await prisma.notification.updateMany({
+        where: { ...baseWhere, id },
+        data: { isRead: true },
       });
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error("PATCH /api/notifications error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

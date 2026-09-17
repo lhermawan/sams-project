@@ -76,6 +76,36 @@ export async function POST(req: NextRequest) {
       successCount++;
     }
 
+    // Notify Super Admins
+    if (successCount > 0) {
+      try {
+        const targetTenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true },
+        });
+
+        const superAdmins = await prisma.user.findMany({
+          where: { role: "SUPER_ADMIN", isActive: true },
+          select: { id: true, tenantId: true },
+        });
+
+        if (superAdmins.length > 0) {
+          await prisma.notification.createMany({
+            data: superAdmins.map((sa) => ({
+              tenantId: sa.tenantId,
+              userId: sa.id,
+              type: "BULK_IMPORT_COMPLETED",
+              title: "Import Data Pegawai Selesai",
+              message: `Berhasil mengimpor ${successCount} data pegawai untuk mitra "${targetTenant?.name || "Mitra"}".`,
+              data: JSON.stringify({ url: "/super-admin/users" }),
+            })),
+          });
+        }
+      } catch (notifErr) {
+        console.warn("Gagal membuat notifikasi bulk import:", notifErr);
+      }
+    }
+
     return NextResponse.json({ success: true, count: successCount }, { status: 201 });
   } catch (error: any) {
     console.error("Bulk import error:", error);

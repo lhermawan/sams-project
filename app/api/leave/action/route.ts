@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
           type: "LEAVE_STATUS",
           title,
           message,
-            tenantId: session.user.tenantId
+          tenantId: session.user.tenantId,
+          data: JSON.stringify({ url: "/leave" }),
         },
       });
     }

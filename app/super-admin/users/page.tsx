@@ -5,6 +5,7 @@ import UserTable from "@/components/super-admin/UserTable";
 import Link from "next/link";
 import { Plus, FileUp } from "lucide-react";
 import NormalizeEmailsButton from "./NormalizeEmailsButton";
+import ExportUsersButton from "@/components/super-admin/ExportUsersButton";
 
 export default async function UsersPage() {
   const session = await auth();
@@ -47,7 +48,8 @@ export default async function UsersPage() {
               Kelola seluruh akun Admin, Pegawai, dan Super Admin di semua mitra perusahaan.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <ExportUsersButton tenants={tenants} />
             <NormalizeEmailsButton />
             <Link
               href="/super-admin/users/import"

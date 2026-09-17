@@ -182,8 +182,9 @@ export async function POST(req: NextRequest) {
         message: shouldMarkIncomplete
           ? `Absen pulang dicatat pada ${now.toLocaleTimeString("id-ID")} WIB dengan catatan laporan patroli belum lengkap.`
           : `Absen pulang berhasil dicatat pada ${now.toLocaleTimeString("id-ID")} WIB. Terima kasih atas kerja keras Anda!`,
-          tenantId: session.user.tenantId
-    },
+        tenantId: session.user.tenantId,
+        data: JSON.stringify({ url: "/history" }),
+      },
     });
 
     return NextResponse.json({

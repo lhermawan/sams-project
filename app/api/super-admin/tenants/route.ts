@@ -49,6 +49,29 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Notify Super Admins
+    try {
+      const superAdmins = await prisma.user.findMany({
+        where: { role: "SUPER_ADMIN", isActive: true },
+        select: { id: true, tenantId: true },
+      });
+
+      if (superAdmins.length > 0) {
+        await prisma.notification.createMany({
+          data: superAdmins.map((sa) => ({
+            tenantId: sa.tenantId,
+            userId: sa.id,
+            type: "TENANT_CREATED",
+            title: "Mitra Baru Ditambahkan",
+            message: `Mitra "${newTenant.name}" (${newTenant.subdomain}) berhasil dibuat dengan admin ${adminEmail.trim().toLowerCase()}.`,
+            data: JSON.stringify({ url: "/super-admin/dashboard" }),
+          })),
+        });
+      }
+    } catch (notifErr) {
+      console.warn("Gagal membuat notifikasi tenant baru:", notifErr);
+    }
+
     return NextResponse.json({ success: true, tenant: newTenant }, { status: 201 });
   } catch (error: any) {
     console.error("Failed to create tenant:", error);

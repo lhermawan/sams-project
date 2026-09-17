@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { join } from "path";
 import { readFileSync, existsSync } from "fs";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -24,10 +26,15 @@ export async function GET(
     else if (ext === 'webp') contentType = 'image/webp';
     else if (ext === 'pdf') contentType = 'application/pdf';
 
+    const isProfile = resolvedParams.path[0] === "profiles" || resolvedParams.path.includes("profiles");
+    const cacheControl = isProfile
+      ? "no-cache, no-store, must-revalidate"
+      : "public, max-age=31536000, immutable";
+
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": cacheControl,
       },
     });
   } catch (error) {

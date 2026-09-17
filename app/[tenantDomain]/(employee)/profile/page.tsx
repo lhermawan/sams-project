@@ -5,6 +5,7 @@ import { id } from "date-fns/locale";
 import { User, Phone, MapPin, Building, Briefcase, Mail, LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth";
 import { headers, cookies } from "next/headers";
+import ProfileClientActions from "@/components/employee/ProfileClientActions";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -29,7 +30,7 @@ export default async function ProfilePage() {
     <div className="min-h-screen bg-gray-50">
       {/* Profile Header */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 px-5 pt-12 pb-8 text-white text-center">
-        <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center text-3xl font-bold text-blue-600 shadow-lg mb-3">
+        <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center text-3xl font-bold text-blue-600 shadow-lg mb-3 overflow-hidden">
           {employee.photoUrl ? (
             <img src={employee.photoUrl} alt={employee.name} className="w-20 h-20 rounded-full object-cover" />
           ) : (
@@ -44,11 +45,14 @@ export default async function ProfilePage() {
       </div>
 
       <div className="px-5 mt-4 space-y-4">
+        {/* Quick Actions (Edit Profil & Ubah Password Mandiri) */}
+        <ProfileClientActions employee={employee} />
+
         {/* Stats */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="grid grid-cols-3 divide-x divide-gray-100">
             {[
-            { label: "Total Absensi", value: totalCount },
+              { label: "Total Absensi", value: totalCount },
               { label: "Tepat Waktu", value: validCount },
               { label: "Terlambat", value: lateCount },
             ].map((s) => (
@@ -65,7 +69,7 @@ export default async function ProfilePage() {
           <h2 className="font-semibold text-gray-800 mb-4">Informasi Pegawai</h2>
           <div className="space-y-3">
             {[
-              { icon: Mail, label: "Email", value: employee.user.email },
+              { icon: Mail, label: "Email / Username", value: employee.user.email },
               { icon: Building, label: "Bagian", value: employee.department },
               { icon: Briefcase, label: "Jabatan", value: employee.position },
               { icon: Phone, label: "No. Telepon", value: employee.phone ?? "—" },

@@ -9,13 +9,41 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((await params).id === "app" || !(await params).id) {
+    const tenantId = (await params).id;
+    if (tenantId === "app" || !tenantId) {
       return NextResponse.json({ error: "Cannot delete system tenant" }, { status: 400 });
     }
 
-    await prisma.tenant.delete({
-      where: { id: (await params).id },
+    const tenantToDelete = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, subdomain: true },
     });
+
+    await prisma.tenant.delete({
+      where: { id: tenantId },
+    });
+
+    // Notify Super Admins
+    try {
+      const superAdmins = await prisma.user.findMany({
+        where: { role: "SUPER_ADMIN", isActive: true },
+        select: { id: true, tenantId: true },
+      });
+      if (superAdmins.length > 0) {
+        await prisma.notification.createMany({
+          data: superAdmins.map((sa) => ({
+            tenantId: sa.tenantId,
+            userId: sa.id,
+            type: "TENANT_UPDATED",
+            title: "Mitra Dihapus",
+            message: `Mitra "${tenantToDelete?.name || tenantId}" (${tenantToDelete?.subdomain || "-"}) telah dihapus dari sistem.`,
+            data: JSON.stringify({ url: "/super-admin/dashboard" }),
+          })),
+        });
+      }
+    } catch (notifErr) {
+      console.warn("Gagal membuat notifikasi delete tenant:", notifErr);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -32,15 +60,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const { isActive } = await req.json();
+    const tenantId = (await params).id;
 
-    if ((await params).id === "app") {
+    if (tenantId === "app") {
       return NextResponse.json({ error: "Cannot modify system tenant" }, { status: 400 });
     }
 
-    await prisma.tenant.update({
-      where: { id: (await params).id },
+    const updatedTenant = await prisma.tenant.update({
+      where: { id: tenantId },
       data: { isActive },
     });
+
+    // Notify Super Admins
+    try {
+      const superAdmins = await prisma.user.findMany({
+        where: { role: "SUPER_ADMIN", isActive: true },
+        select: { id: true, tenantId: true },
+      });
+      if (superAdmins.length > 0) {
+        await prisma.notification.createMany({
+          data: superAdmins.map((sa) => ({
+            tenantId: sa.tenantId,
+            userId: sa.id,
+            type: "TENANT_UPDATED",
+            title: "Status Mitra Diperbarui",
+            message: `Status mitra "${updatedTenant.name}" diubah menjadi ${isActive ? "Aktif" : "Nonaktif"}.`,
+            data: JSON.stringify({ url: "/super-admin/dashboard" }),
+          })),
+        });
+      }
+    } catch (notifErr) {
+      console.warn("Gagal membuat notifikasi status tenant:", notifErr);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -57,8 +108,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const { name, subdomain } = await req.json();
+    const tenantId = (await params).id;
 
-    if ((await params).id === "app") {
+    if (tenantId === "app") {
       return NextResponse.json({ error: "Cannot modify system tenant" }, { status: 400 });
     }
 
@@ -70,7 +122,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const existing = await prisma.tenant.findFirst({
       where: {
         subdomain: subdomain.toLowerCase(),
-        id: { not: (await params).id }
+        id: { not: tenantId }
       }
     });
 
@@ -78,10 +130,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Subdomain sudah digunakan oleh tenant lain" }, { status: 400 });
     }
 
-    await prisma.tenant.update({
-      where: { id: (await params).id },
+    const updatedTenant = await prisma.tenant.update({
+      where: { id: tenantId },
       data: { name, subdomain: subdomain.toLowerCase() },
     });
+
+    // Notify Super Admins
+    try {
+      const superAdmins = await prisma.user.findMany({
+        where: { role: "SUPER_ADMIN", isActive: true },
+        select: { id: true, tenantId: true },
+      });
+      if (superAdmins.length > 0) {
+        await prisma.notification.createMany({
+          data: superAdmins.map((sa) => ({
+            tenantId: sa.tenantId,
+            userId: sa.id,
+            type: "TENANT_UPDATED",
+            title: "Data Mitra Diperbarui",
+            message: `Informasi mitra "${updatedTenant.name}" (${updatedTenant.subdomain}) telah diperbarui.`,
+            data: JSON.stringify({ url: "/super-admin/dashboard" }),
+          })),
+        });
+      }
+    } catch (notifErr) {
+      console.warn("Gagal membuat notifikasi update data tenant:", notifErr);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

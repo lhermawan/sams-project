@@ -270,6 +270,7 @@ export async function POST(req: NextRequest) {
             type: "LEAVE_REQUEST",
             title: "Pengajuan Izin/Cuti Baru",
             message: employee.name + " (" + employee.department + ") mengajukan " + leaveType + " mulai " + start.toLocaleDateString("id-ID"),
+            data: JSON.stringify({ url: "/admin/leave" }),
           })),
         });
       }
@@ -280,7 +281,8 @@ export async function POST(req: NextRequest) {
           type: "LEAVE_REQUEST",
           title: "Pengajuan Izin/Cuti Didaftarkan",
           message: "Pengajuan " + leaveType + " Anda telah didaftarkan oleh admin untuk periode " + start.toLocaleDateString("id-ID") + " s.d " + end.toLocaleDateString("id-ID"),
-            tenantId: session.user.tenantId
+          tenantId: session.user.tenantId,
+          data: JSON.stringify({ url: "/leave" }),
         },
       });
     }
