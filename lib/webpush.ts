@@ -4,8 +4,17 @@ export async function subscribeToWebPush() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.register("/sw.js");
     
+    // Wait for the service worker to be active if it's installing
+    if (registration.installing) {
+      await new Promise((resolve) => {
+        registration.installing?.addEventListener('statechange', (e: any) => {
+          if (e.target.state === 'activated') resolve(true);
+        });
+      });
+    }
+
     // Check existing subscription
     const existingSub = await registration.pushManager.getSubscription();
     if (existingSub) {
@@ -47,7 +56,7 @@ export async function unsubscribeFromWebPush() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.register("/sw.js");
     const subscription = await registration.pushManager.getSubscription();
     
     if (subscription) {

@@ -81,11 +81,11 @@ export default function NotificationBell({
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
       setPushSupported(true);
-      navigator.serviceWorker.ready.then((reg) => {
+      navigator.serviceWorker.register("/sw.js").then((reg) => {
         reg.pushManager.getSubscription().then((sub) => {
           setIsSubscribed(!!sub);
-        });
-      });
+        }).catch(() => {});
+      }).catch(() => {});
     }
   }, []);
 
