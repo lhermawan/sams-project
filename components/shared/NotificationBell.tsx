@@ -140,25 +140,53 @@ export default function NotificationBell({
 
   const handleNotificationClick = async (n: Notification) => {
     if (!n.isRead) {
-      markRead(n.id);
+      await markRead(n.id);
     }
 
+    setOpen(false); // Always close the dropdown
+
+    let url = "/dashboard"; // Fallback default
     if (n.data) {
       try {
         const parsed = JSON.parse(n.data);
         if (parsed?.url) {
-          setOpen(false);
-          router.push(parsed.url);
-          return;
+          url = parsed.url;
         }
       } catch {
         if (typeof n.data === "string" && n.data.startsWith("/")) {
-          setOpen(false);
-          router.push(n.data);
-          return;
+          url = n.data;
         }
       }
+    } else {
+      // Fallbacks based on type if data is null (legacy notifications)
+      switch (n.type) {
+        case "LEAVE_REQUEST":
+        case "LEAVE_STATUS":
+        case "LEAVE_RESULT":
+          url = "/admin/leave"; // Or /leave if employee, middleware will handle redirect if unauthorized
+          break;
+        case "ATTENDANCE_SUCCESS":
+        case "LATE_WARNING":
+        case "LATE_ATTENDANCE":
+          url = "/attendance";
+          break;
+        case "VALIDATION_REQUEST":
+          url = "/admin/attendance";
+          break;
+        case "TENANT_CREATED":
+        case "TENANT_UPDATED":
+          url = "/super-admin/tenants";
+          break;
+        case "BULK_IMPORT_COMPLETED":
+        case "SECURITY_ALERT":
+          url = "/super-admin/dashboard";
+          break;
+      }
     }
+
+    // Use window.location.href instead of router.push because Next.js client router 
+    // might fail to match rewritten paths (like /admin/leave -> /[tenantDomain]/admin/leave)
+    window.location.href = url;
   };
 
   const displayedNotifications =
